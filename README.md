@@ -13,7 +13,7 @@ MarketCraft is a premium 2D digital marketing learning game where you role-play 
 
 - **Frontend**: React, TypeScript, Vite
 - **Styling**: Tailwind CSS, Framer Motion, shadcn/ui
-- **Backend/Database**: Supabase
+- **State Management**: Zustand
 - **Charts**: Recharts
 
 ## 📦 Getting Started
@@ -35,14 +35,7 @@ MarketCraft is a premium 2D digital marketing learning game where you role-play 
    npm install
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the root directory and add your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. Start the development server:
+3. Start the development server:
    ```sh
    npm run dev
    ```

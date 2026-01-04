@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GAME_LEVELS } from '@/data/levels';
 import { Button } from '@/components/ui/button';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Clock,
   Star,
   Heart,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/hooks/useAudio';
-import { supabase } from '@/integrations/supabase/client';
+import { evaluateCreativeSubmission } from '@/lib/evaluation';
 import { toast } from 'sonner';
 import { NPCDialogueBox } from './NPCDialogueBox';
 import { BannerCanvas } from './BannerCanvas';
@@ -32,11 +32,11 @@ const TIMER_DURATIONS = {
 };
 
 export const CreativeLevelPlay: React.FC = () => {
-  const { 
-    player, 
-    currentLevelId, 
+  const {
+    player,
+    currentLevelId,
     currentAttempt,
-    setScreen, 
+    setScreen,
     setEvaluation,
     incrementAttempt,
     addXP,
@@ -57,7 +57,7 @@ export const CreativeLevelPlay: React.FC = () => {
   } | null>(null);
 
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
-  
+
   useEffect(() => {
     if (!canPlay() && !player?.isPremium) {
       setScreen('no-lives');
@@ -106,11 +106,11 @@ export const CreativeLevelPlay: React.FC = () => {
   const handleTimeUp = () => {
     playSfx('failure');
     toast.error("Time's up! You ran out of time.");
-    
+
     if (!player?.isPremium) {
       loseLife();
     }
-    
+
     setEvaluation({
       score: 0,
       passed: false,
@@ -120,7 +120,7 @@ export const CreativeLevelPlay: React.FC = () => {
       canRetry: currentAttempt < (level?.rubric.maxAttempts || 3),
       attemptsLeft: (level?.rubric.maxAttempts || 3) - currentAttempt
     });
-    
+
     incrementAttempt();
     setScreen('evaluation');
   };
@@ -170,38 +170,23 @@ export const CreativeLevelPlay: React.FC = () => {
 
   const handleSubmit = async (imageData: string, elements: CanvasElementData[]) => {
     if (!level) return;
-    
+
     setIsEvaluating(true);
     playSfx('click');
 
     try {
-      // Call the AI evaluation edge function for creative work
-      const { data, error } = await supabase.functions.invoke('evaluate-creative', {
-        body: {
-          levelId: level.id,
-          levelTitle: level.title,
-          taskPrompt: level.taskPrompt,
-          difficulty: difficulty,
-          timeSpent: TIMER_DURATIONS[difficulty] - (timeLeft || 0),
-          elements: elements,
-          rubric: {
-            criteria: level.rubric.criteria.map(c => ({
-              name: c.name,
-              description: c.description,
-              weight: c.weight
-            })),
-            passingScore: level.rubric.passingScore
-          }
-        }
+      const data = await evaluateCreativeSubmission(elements, {
+        criteria: level.rubric.criteria.map(c => ({
+          name: c.name,
+          description: c.description,
+          weight: c.weight
+        })),
+        passingScore: level.rubric.passingScore
       });
-
-      if (error) throw error;
-
-      const passed = data.overallScore >= level.rubric.passingScore;
 
       const evaluation = {
         score: data.overallScore,
-        passed,
+        passed: data.passed,
         feedback: data.feedback,
         criteriaScores: data.criteriaScores,
         improvement: data.improvement,
@@ -211,7 +196,7 @@ export const CreativeLevelPlay: React.FC = () => {
 
       setEvaluation(evaluation);
 
-      if (passed) {
+      if (data.passed) {
         playSfx('success');
         addXP(level.xpReward);
         const isFirstTry = currentAttempt === 1;
@@ -263,7 +248,7 @@ export const CreativeLevelPlay: React.FC = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        
+
         <div className="flex items-center gap-3">
           {/* Difficulty Badge */}
           <span className={cn(
@@ -275,7 +260,7 @@ export const CreativeLevelPlay: React.FC = () => {
 
           {/* Timer */}
           {showTask && timeLeft !== null && (
-            <motion.div 
+            <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className={cn(
@@ -307,7 +292,7 @@ export const CreativeLevelPlay: React.FC = () => {
             <Clock className="w-4 h-4" />
             <span>Attempt {currentAttempt}/{level.rubric.maxAttempts}</span>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm">
             <Star className="w-4 h-4 text-primary" />
             <span className="text-primary font-semibold">{level.xpReward} XP</span>
@@ -316,7 +301,7 @@ export const CreativeLevelPlay: React.FC = () => {
       </header>
 
       {/* Level Info */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-4"

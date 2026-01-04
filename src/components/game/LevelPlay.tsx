@@ -3,8 +3,8 @@ import { useGameStore } from '@/store/gameStore';
 import { GAME_LEVELS } from '@/data/levels';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  ArrowLeft, 
+import {
+  ArrowLeft,
   Send,
   Lightbulb,
   Clock,
@@ -14,16 +14,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/hooks/useAudio';
-import { supabase } from '@/integrations/supabase/client';
+import { evaluateSubmission } from '@/lib/evaluation';
 import { toast } from 'sonner';
 import { NPCDialogueBox } from './NPCDialogueBox';
 
 export const LevelPlay: React.FC = () => {
-  const { 
-    player, 
-    currentLevelId, 
+  const {
+    player,
+    currentLevelId,
     currentAttempt,
-    setScreen, 
+    setScreen,
     setEvaluation,
     incrementAttempt,
     addXP,
@@ -40,7 +40,7 @@ export const LevelPlay: React.FC = () => {
   const [showHints, setShowHints] = useState(false);
 
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
-  
+
   useEffect(() => {
     if (!canPlay() && !player?.isPremium) {
       setScreen('no-lives');
@@ -72,36 +72,23 @@ export const LevelPlay: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!submission.trim()) return;
-    
+
     setIsEvaluating(true);
     playSfx('click');
 
     try {
-      // Call the AI evaluation edge function
-      const { data, error } = await supabase.functions.invoke('evaluate-task', {
-        body: {
-          levelId: level.id,
-          levelTitle: level.title,
-          taskPrompt: level.taskPrompt,
-          submission: submission.trim(),
-          rubric: {
-            criteria: level.rubric.criteria.map(c => ({
-              name: c.name,
-              description: c.description,
-              weight: c.weight
-            })),
-            passingScore: level.rubric.passingScore
-          }
-        }
+      const data = await evaluateSubmission(submission.trim(), {
+        criteria: level.rubric.criteria.map(c => ({
+          name: c.name,
+          description: c.description,
+          weight: c.weight
+        })),
+        passingScore: level.rubric.passingScore
       });
-
-      if (error) throw error;
-
-      const passed = data.overallScore >= level.rubric.passingScore;
 
       const evaluation = {
         score: data.overallScore,
-        passed,
+        passed: data.passed,
         feedback: data.feedback,
         criteriaScores: data.criteriaScores,
         improvement: data.improvement,
@@ -111,7 +98,7 @@ export const LevelPlay: React.FC = () => {
 
       setEvaluation(evaluation);
 
-      if (passed) {
+      if (data.passed) {
         playSfx('success');
         addXP(level.xpReward);
         const isFirstTry = currentAttempt === 1;
@@ -157,7 +144,7 @@ export const LevelPlay: React.FC = () => {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        
+
         <div className="flex items-center gap-4">
           {/* Lives */}
           <div className="flex items-center gap-1 glass-card rounded-lg px-3 py-1.5">

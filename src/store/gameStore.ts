@@ -4,7 +4,6 @@ import { Player, GameScreen, PortfolioItem, EvaluationResult, AudioState } from 
 import { ACHIEVEMENTS, Achievement, UnlockedAchievement } from '@/types/achievements';
 import { PlayerDailyData, StreakData, generateDailyChallenges, getStreakBonus } from '@/types/dailyChallenges';
 import { GAME_LEVELS, OFFICE_ROOMS } from '@/data/levels';
-import { supabase } from '@/integrations/supabase/client';
 
 interface GameState {
   player: Player | null;
@@ -17,11 +16,11 @@ interface GameState {
   pendingAchievement: Achievement | null;
   showTutorial: boolean;
   showDailyChallenges: boolean;
-  
+
   // Computed daily/streak data accessors
   dailyData: PlayerDailyData | null;
   streakData: StreakData | null;
-  
+
   // Actions
   setPlayer: (player: Player) => void;
   updatePlayer: (updates: Partial<Player>) => void;
@@ -34,17 +33,17 @@ interface GameState {
   incrementAttempt: () => void;
   resetAttempt: () => void;
   resetGame: () => void;
-  
+
   // Lives system
   loseLife: () => void;
   regenerateLife: () => void;
   checkLivesRegen: () => void;
   canPlay: () => boolean;
   getTimeUntilNextLife: () => number;
-  
+
   // Premium
   setPremium: (isPremium: boolean, expiresAt?: Date) => void;
-  
+
   // Audio
   setAudio: (updates: Partial<AudioState>) => void;
   toggleMusic: () => void;
@@ -120,29 +119,29 @@ export const useGameStore = create<GameState>()(
       },
 
       setPlayer: (player) => set({ player }),
-      
+
       updatePlayer: (updates) => set((state) => ({
         player: state.player ? { ...state.player, ...updates } : null
       })),
-      
+
       setScreen: (screen) => set({ currentScreen: screen }),
-      
+
       setCurrentLevel: (levelId) => set({ currentLevelId: levelId, currentAttempt: 1, lastEvaluation: null }),
-      
+
       setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
-      
+
       addXP: (amount) => {
         set((state) => {
           if (!state.player) return state;
           const newXP = state.player.xp + amount;
           const newLevel = Math.floor(newXP / 500) + 1;
-          
+
           // Update daily XP tracking
           const today = getTodayString();
           const dailyData = state.player.dailyData?.date === today
             ? { ...state.player.dailyData, xpEarnedToday: state.player.dailyData.xpEarnedToday + amount }
             : { ...getDefaultDailyData(today), xpEarnedToday: amount };
-          
+
           return {
             player: {
               ...state.player,
@@ -153,37 +152,37 @@ export const useGameStore = create<GameState>()(
           };
         });
       },
-      
+
       completeLevel: (levelId, portfolioItem, isFirstTry = false) => {
         set((state) => {
           if (!state.player) return state;
           const completedLevels = state.player.completedLevels.includes(levelId)
             ? state.player.completedLevels
             : [...state.player.completedLevels, levelId];
-          
+
           const existingIndex = state.player.portfolio.findIndex(p => p.levelId === levelId);
           const portfolio = existingIndex >= 0
             ? state.player.portfolio.map((p, i) => i === existingIndex ? portfolioItem : p)
             : [...state.player.portfolio, portfolioItem];
-          
+
           // Update daily tracking
           const today = getTodayString();
           let dailyData = state.player.dailyData?.date === today
             ? { ...state.player.dailyData }
             : getDefaultDailyData(today);
-          
+
           if (!dailyData.levelsCompletedToday.includes(levelId)) {
             dailyData.levelsCompletedToday = [...dailyData.levelsCompletedToday, levelId];
           }
-          
+
           if (portfolioItem.score === 100) {
             dailyData.perfectScoresToday++;
           }
-          
+
           if (isFirstTry) {
             dailyData.firstTriesToday++;
           }
-          
+
           return {
             player: {
               ...state.player,
@@ -199,13 +198,13 @@ export const useGameStore = create<GameState>()(
           get().checkAchievements(portfolioItem.score, isFirstTry);
         }, 100);
       },
-      
+
       setEvaluation: (result) => set({ lastEvaluation: result }),
-      
+
       incrementAttempt: () => set((state) => ({ currentAttempt: state.currentAttempt + 1 })),
-      
+
       resetAttempt: () => set({ currentAttempt: 1 }),
-      
+
       resetGame: () => set({
         player: null,
         currentScreen: 'splash',
@@ -243,10 +242,10 @@ export const useGameStore = create<GameState>()(
       checkLivesRegen: () => {
         const state = get();
         if (!state.player || state.player.lives >= MAX_LIVES || !state.player.lastLifeLostAt) return;
-        
+
         const timeSinceLastLost = Date.now() - new Date(state.player.lastLifeLostAt).getTime();
         const livesToRegen = Math.floor(timeSinceLastLost / LIFE_REGEN_TIME);
-        
+
         if (livesToRegen > 0) {
           const newLives = Math.min(MAX_LIVES, state.player.lives + livesToRegen);
           set({
@@ -269,7 +268,7 @@ export const useGameStore = create<GameState>()(
       getTimeUntilNextLife: () => {
         const state = get();
         if (!state.player || state.player.lives >= MAX_LIVES || !state.player.lastLifeLostAt) return 0;
-        
+
         const timeSinceLastLost = Date.now() - new Date(state.player.lastLifeLostAt).getTime();
         const timeInCurrentCycle = timeSinceLastLost % LIFE_REGEN_TIME;
         return LIFE_REGEN_TIME - timeInCurrentCycle;
@@ -303,34 +302,8 @@ export const useGameStore = create<GameState>()(
 
       // Leaderboard sync
       syncToLeaderboard: async () => {
-        const state = get();
-        if (!state.player) return;
-
-        try {
-          const highestScore = state.player.portfolio.reduce((max, item) => 
-            Math.max(max, item.score), 0
-          );
-
-          const { error } = await supabase
-            .from('leaderboard')
-            .upsert({
-              player_id: state.player.id,
-              player_name: state.player.name,
-              total_xp: state.player.xp,
-              levels_completed: state.player.completedLevels.length,
-              highest_score: highestScore,
-              avatar_gender: state.player.gender,
-              avatar_style: state.player.avatarStyle,
-            }, {
-              onConflict: 'player_id'
-            });
-
-          if (error) {
-            console.error('Error syncing to leaderboard:', error);
-          }
-        } catch (error) {
-          console.error('Error syncing to leaderboard:', error);
-        }
+        // Supabase sync removed - local only
+        console.log("Local leaderboard sync - Supabase removed");
       },
 
       // Achievements
@@ -369,7 +342,7 @@ export const useGameStore = create<GameState>()(
                 const room = OFFICE_ROOMS.find(r => r.id === achievement.requirement.roomId);
                 if (room) {
                   const roomLevelIds = room.levels;
-                  const completedInRoom = roomLevelIds.filter(id => 
+                  const completedInRoom = roomLevelIds.filter(id =>
                     state.player!.completedLevels.includes(id)
                   ).length;
                   unlocked = completedInRoom >= roomLevelIds.length;
@@ -412,10 +385,10 @@ export const useGameStore = create<GameState>()(
       isLevelUnlocked: (levelId: number) => {
         const state = get();
         if (!state.player) return false;
-        
+
         // Level 1 is always unlocked
         if (levelId === 1) return true;
-        
+
         // Check if previous level is completed
         const previousLevelCompleted = state.player.completedLevels.includes(levelId - 1);
         return previousLevelCompleted;
@@ -423,7 +396,7 @@ export const useGameStore = create<GameState>()(
 
       // Tutorial
       setShowTutorial: (show) => set({ showTutorial: show }),
-      
+
       completeTutorial: () => set((state) => ({
         showTutorial: false,
         player: state.player ? { ...state.player, hasSeenTutorial: true } : null
@@ -501,7 +474,7 @@ export const useGameStore = create<GameState>()(
 
       updateDailyProgress: (type, value) => set((state) => {
         if (!state.player) return state;
-        
+
         const today = getTodayString();
         let dailyData = state.player.dailyData?.date === today
           ? { ...state.player.dailyData }
@@ -534,7 +507,7 @@ export const useGameStore = create<GameState>()(
 
       completeDailyChallenge: (challengeId) => set((state) => {
         if (!state.player || !state.player.dailyData) return state;
-        
+
         if (state.player.dailyData.completedChallenges.includes(challengeId)) {
           return state;
         }

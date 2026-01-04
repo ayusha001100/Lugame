@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { 
-  ArrowLeft, 
-  Trophy, 
-  Medal, 
-  Star, 
+import {
+  ArrowLeft,
+  Trophy,
+  Medal,
+  Star,
   Crown,
   RefreshCw,
   Zap
@@ -36,16 +35,43 @@ export const LeaderboardView: React.FC = () => {
 
   const fetchLeaderboard = async () => {
     setIsLoading(true);
-    try {
-      const orderBy = activeTab === 'xp' ? 'total_xp' : activeTab === 'levels' ? 'levels_completed' : 'highest_score';
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .order(orderBy, { ascending: false })
-        .limit(50);
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-      if (error) throw error;
-      setEntries(data || []);
+    try {
+      // Mock leaderboard entries
+      const mockEntries: LeaderboardEntry[] = [
+        { id: '1', player_id: 'p1', player_name: 'MarketingPro', total_xp: 15400, levels_completed: 13, highest_score: 100, avatar_gender: 'female', avatar_style: 1 },
+        { id: '2', player_id: 'p2', player_name: 'GrowthHacker', total_xp: 12800, levels_completed: 12, highest_score: 98, avatar_gender: 'male', avatar_style: 2 },
+        { id: '3', player_id: 'p3', player_name: 'AnalyticSage', total_xp: 11200, levels_completed: 11, highest_score: 95, avatar_gender: 'other', avatar_style: 1 },
+        { id: '4', player_id: 'p4', player_name: 'CreativeMind', total_xp: 9500, levels_completed: 10, highest_score: 92, avatar_gender: 'female', avatar_style: 3 },
+        { id: '5', player_id: 'p5', player_name: 'AdWizard', total_xp: 8200, levels_completed: 9, highest_score: 90, avatar_gender: 'male', avatar_style: 1 },
+      ];
+
+      if (player) {
+        const playerEntry: LeaderboardEntry = {
+          id: player.id,
+          player_id: player.id,
+          player_name: player.name,
+          total_xp: player.xp,
+          levels_completed: player.completedLevels.length,
+          highest_score: player.portfolio.reduce((max, item) => Math.max(max, item.score), 0),
+          avatar_gender: player.gender,
+          avatar_style: player.avatarStyle
+        };
+
+        if (!mockEntries.find(e => e.player_id === player.id)) {
+          mockEntries.push(playerEntry);
+        }
+      }
+
+      const sortedEntries = [...mockEntries].sort((a, b) => {
+        if (activeTab === 'xp') return b.total_xp - a.total_xp;
+        if (activeTab === 'levels') return b.levels_completed - a.levels_completed;
+        return b.highest_score - a.highest_score;
+      });
+
+      setEntries(sortedEntries);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
     } finally {
@@ -164,9 +190,9 @@ export const LeaderboardView: React.FC = () => {
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold text-gradient-gold">
-                {activeTab === 'xp' ? player.xp.toLocaleString() : 
-                 activeTab === 'levels' ? player.completedLevels.length :
-                 playerEntry?.highest_score || 0}
+                {activeTab === 'xp' ? player.xp.toLocaleString() :
+                  activeTab === 'levels' ? player.completedLevels.length :
+                    playerEntry?.highest_score || 0}
               </p>
               <p className="text-xs text-muted-foreground">
                 {activeTab === 'xp' ? 'XP' : activeTab === 'levels' ? 'Completed' : 'Best Score'}
@@ -262,8 +288,8 @@ export const LeaderboardView: React.FC = () => {
                           rank === 3 && 'text-amber-500'
                         )}>
                           {activeTab === 'xp' ? entry.total_xp.toLocaleString() :
-                           activeTab === 'levels' ? entry.levels_completed :
-                           entry.highest_score}
+                            activeTab === 'levels' ? entry.levels_completed :
+                              entry.highest_score}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {activeTab === 'xp' ? 'XP' : activeTab === 'levels' ? 'Levels' : 'Score'}
