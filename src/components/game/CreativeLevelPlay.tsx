@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { NPCDialogueBox } from './NPCDialogueBox';
 import { BannerCanvas } from './BannerCanvas';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DialogueNode, DialogueOption, PortfolioItem } from '@/types/game';
 
 interface CanvasElementData {
   type: string;
@@ -41,12 +42,12 @@ export const CreativeLevelPlay: React.FC = () => {
     incrementAttempt,
     addXP,
     completeLevel,
-    loseLife,
+    consumeStamina,
     canPlay
   } = useGameStore();
 
   const { playSfx } = useAudio();
-  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const [currentNode, setCurrentNode] = useState<DialogueNode | null>(null);
   const [showTask, setShowTask] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -57,6 +58,12 @@ export const CreativeLevelPlay: React.FC = () => {
   } | null>(null);
 
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
+
+  useEffect(() => {
+    if (level && level.npcDialogue && level.npcDialogue.length > 0) {
+      setCurrentNode(level.npcDialogue[0]);
+    }
+  }, [level]);
 
   useEffect(() => {
     if (!canPlay() && !player?.isPremium) {
@@ -108,7 +115,7 @@ export const CreativeLevelPlay: React.FC = () => {
     toast.error("Time's up! You ran out of time.");
 
     if (!player?.isPremium) {
-      loseLife();
+      consumeStamina(10);
     }
 
     setEvaluation({
@@ -116,7 +123,10 @@ export const CreativeLevelPlay: React.FC = () => {
       passed: false,
       feedback: "Unfortunately, you ran out of time. Time management is crucial in creative work. Try again and plan your design before executing!",
       criteriaScores: [],
-      improvement: "Start with a clear mental picture of what you want to create, then execute quickly.",
+      strengths: [],
+      fixes: ["Improve time management"],
+      redoSuggestions: ["Start with a simpler layout"],
+      nextBestAction: "Retry the challenge",
       canRetry: currentAttempt < (level?.rubric.maxAttempts || 3),
       attemptsLeft: (level?.rubric.maxAttempts || 3) - currentAttempt
     });
@@ -153,10 +163,20 @@ export const CreativeLevelPlay: React.FC = () => {
     return npcTypes[room] || 'designer';
   };
 
+  const handleChoice = (option: DialogueOption) => {
+    const nextNode = level.npcDialogue.find(n => n.id === option.nextId);
+    if (nextNode) {
+      setCurrentNode(nextNode);
+    } else {
+      setShowTask(true);
+    }
+  };
+
   const handleDialogueContinue = () => {
     playSfx('click');
-    if (dialogueIndex < level.npcDialogue.length - 1) {
-      setDialogueIndex(prev => prev + 1);
+    const currentIndex = level.npcDialogue.indexOf(currentNode!);
+    if (currentIndex < level.npcDialogue.length - 1) {
+      setCurrentNode(level.npcDialogue[currentIndex + 1]);
     } else {
       playSfx('transition');
       setShowTask(true);
@@ -176,25 +196,27 @@ export const CreativeLevelPlay: React.FC = () => {
 
     try {
       const data = await evaluateCreativeSubmission(elements, {
-        criteria: level.rubric.criteria.map(c => ({
-          name: c.name,
-          description: c.description,
-          weight: c.weight
-        })),
-        passingScore: level.rubric.passingScore
+        criteria: level.rubric.criteria,
+        passingScore: level.rubric.passingScore,
+        levelTitle: level.title,
+        levelPrompt: level.taskPrompt
       });
 
       const evaluation = {
-        score: data.overallScore,
+        score: data.score,
         passed: data.passed,
         feedback: data.feedback,
+        strengths: data.strengths || [],
+        fixes: data.fixes || [],
+        redoSuggestions: data.redoSuggestions || [],
+        nextBestAction: data.nextBestAction || "Advance to next module",
         criteriaScores: data.criteriaScores,
         improvement: data.improvement,
         canRetry: currentAttempt < level.rubric.maxAttempts,
         attemptsLeft: level.rubric.maxAttempts - currentAttempt
       };
 
-      setEvaluation(evaluation);
+      setEvaluation(evaluation as any);
 
       if (data.passed) {
         playSfx('success');
@@ -203,15 +225,17 @@ export const CreativeLevelPlay: React.FC = () => {
         completeLevel(level.id, {
           levelId: level.id,
           title: level.title,
+          category: 'Creative',
           content: `[Creative Banner Design]\nElements: ${elements.length}\nTime: ${formatTime(TIMER_DURATIONS[difficulty] - (timeLeft || 0))}`,
-          score: data.overallScore,
-          feedback: data.feedback,
-          completedAt: new Date()
+          score: data.score,
+          feedback: evaluation as any,
+          completedAt: new Date(),
+          isPublished: false
         }, isFirstTry);
       } else {
         playSfx('failure');
         if (!player.isPremium) {
-          loseLife();
+          consumeStamina(10);
         }
         if (evaluation.canRetry) {
           incrementAttempt();
@@ -273,19 +297,13 @@ export const CreativeLevelPlay: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Lives */}
+          {/* Lives / Stamina */}
           <div className="flex items-center gap-1 glass-card rounded-lg px-3 py-1.5">
-            {[...Array(player.maxLives)].map((_, i) => (
-              <Heart
-                key={i}
-                className={cn(
-                  'w-3.5 h-3.5 transition-all',
-                  i < player.lives
-                    ? 'text-red-500 fill-red-500'
-                    : 'text-muted-foreground/30'
-                )}
-              />
-            ))}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold text-muted-foreground mr-1">ENERGY</span>
+              <span className={cn("text-xs font-bold", player.stamina < 20 ? "text-red-500" : "text-primary")}>{player.stamina}%</span>
+              {/* Visual bar could be added here */}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -315,7 +333,7 @@ export const CreativeLevelPlay: React.FC = () => {
 
       {/* NPC Dialogue or Canvas */}
       <AnimatePresence mode="wait">
-        {!showTask ? (
+        {!showTask && currentNode ? (
           <motion.div
             key="dialogue"
             initial={{ opacity: 0, x: -20 }}
@@ -326,11 +344,10 @@ export const CreativeLevelPlay: React.FC = () => {
               npcName={level.npcName}
               npcRole={level.npcRole}
               npcType={getNpcType(level.room)}
-              dialogue={level.npcDialogue[dialogueIndex]}
-              dialogueIndex={dialogueIndex}
-              totalDialogues={level.npcDialogue.length}
+              node={currentNode}
+              onChoice={handleChoice}
               onContinue={handleDialogueContinue}
-              isLastDialogue={dialogueIndex >= level.npcDialogue.length - 1}
+              isLast={level.npcDialogue.indexOf(currentNode) === level.npcDialogue.length - 1}
             />
           </motion.div>
         ) : (

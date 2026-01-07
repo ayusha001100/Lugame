@@ -1,530 +1,519 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Player, GameScreen, PortfolioItem, EvaluationResult, AudioState } from '@/types/game';
-import { ACHIEVEMENTS, Achievement, UnlockedAchievement } from '@/types/achievements';
-import { PlayerDailyData, StreakData, generateDailyChallenges, getStreakBonus } from '@/types/dailyChallenges';
-import { GAME_LEVELS, OFFICE_ROOMS } from '@/data/levels';
+import {
+  Player,
+  GameScreen,
+  PortfolioItem,
+  EvaluationResult,
+  AudioState,
+  MarketingKPIs,
+  PlayerStats,
+  WorldState
+} from '@/types/game';
+import { Achievement } from '@/types/achievements';
+import { GAME_LEVELS } from '@/data/levels';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { User } from 'firebase/auth';
+import { toast } from 'sonner';
 
 interface GameState {
   player: Player | null;
+  firebaseUser: User | null;
   currentScreen: GameScreen;
   currentLevelId: number | null;
   currentRoomId: string | null;
   currentAttempt: number;
+  activePhaseIndex: number;
   lastEvaluation: EvaluationResult | null;
   audio: AudioState;
   pendingAchievement: Achievement | null;
-  showTutorial: boolean;
-  showDailyChallenges: boolean;
+  gameTime: string; // "09:00 AM" to "10:00 PM"
+  isClockedIn: boolean;
+  isResting: boolean; // New state for 10 PM - 9 AM
+  growthData: { day: number; revenue: number; leads: number }[];
 
-  // Computed daily/streak data accessors
-  dailyData: PlayerDailyData | null;
-  streakData: StreakData | null;
-
-  // Actions
+  // Identity & Profile (MODULE 1)
   setPlayer: (player: Player) => void;
   updatePlayer: (updates: Partial<Player>) => void;
+  setFirebaseUser: (user: User | null) => void;
+  fetchPlayerProfile: (uid: string) => Promise<void>;
+  savePlayerProfile: () => Promise<void>;
+
+  // Navigation
   setScreen: (screen: GameScreen) => void;
   setCurrentLevel: (levelId: number | null) => void;
   setCurrentRoom: (roomId: string | null) => void;
+  setActivePhaseIndex: (index: number) => void;
+  nextPhase: () => void;
+
+  // Progression & Stats (MODULE 2)
   addXP: (amount: number) => void;
+  updateKPIs: (impact: Partial<MarketingKPIs>) => void;
+  updateTrust: (npc: 'manager' | 'designer' | 'founder', amount: number) => void;
+  advanceDay: () => void;
+  clockIn: () => void;
+  clockOut: () => void;
+  sleep: () => void; // New action
+  tick: () => void; // New internal tick action
+
+  // Level Management
+  completePhase: (levelId: number, phaseId: string, result: EvaluationResult) => void;
   completeLevel: (levelId: number, portfolioItem: PortfolioItem, isFirstTry?: boolean) => void;
   setEvaluation: (result: EvaluationResult | null) => void;
   incrementAttempt: () => void;
   resetAttempt: () => void;
-  resetGame: () => void;
 
-  // Lives system
-  loseLife: () => void;
-  regenerateLife: () => void;
-  checkLivesRegen: () => void;
-  canPlay: () => boolean;
-  getTimeUntilNextLife: () => number;
+  // Stamina & Monetization (MODULE 7)
+  consumeStamina: (amount: number) => boolean;
+  checkStaminaRegen: () => void;
+  addTokens: (amount: number) => void;
+  useToken: (amount: number) => boolean;
+  addStipend: (amount: number) => void;
 
-  // Premium
-  setPremium: (isPremium: boolean, expiresAt?: Date) => void;
-
-  // Audio
+  // Audio & Settings
   setAudio: (updates: Partial<AudioState>) => void;
   toggleMusic: () => void;
   toggleSfx: () => void;
 
-  // Leaderboard
-  syncToLeaderboard: () => Promise<void>;
-
-  // Achievements
+  // Achievement System
   checkAchievements: (score?: number, isFirstTry?: boolean) => void;
   clearPendingAchievement: () => void;
 
-  // Level unlocking
+  // Helpers
   isLevelUnlocked: (levelId: number) => boolean;
+  canPlay: () => boolean;
 
-  // Tutorial
-  setShowTutorial: (show: boolean) => void;
-  completeTutorial: () => void;
+  // AI Assistant (MODULE 6)
+  useAIToken: (levelId: number) => void;
+  getAITokensLeft: (levelId: number) => number;
+  addAISuggestion: (suggestion: string) => void;
 
-  // Daily challenges & Streak
-  setShowDailyChallenges: (show: boolean) => void;
-  checkDailyLogin: () => void;
-  claimStreakBonus: () => void;
-  updateDailyProgress: (type: 'level' | 'xp' | 'perfectScore' | 'firstTry', value?: number) => void;
-  completeDailyChallenge: (challengeId: string) => void;
+  resetGame: () => void;
+  retryLevel: () => boolean;
+  earnRetryToken: () => void;
 }
 
-const LIFE_REGEN_TIME = 8 * 60 * 60 * 1000; // 8 hours per life
+const STAMINA_REGEN_TIME = 5 * 1000; // 5 seconds for energy regen
+const LIFE_REGEN_TIME = 5 * 60 * 1000; // 5 minutes per life point
+const MAX_STAMINA = 100;
 const MAX_LIVES = 3;
+const LEVEL_STAMINA_COST = 10;
+export const ENERGY_COST_PER_TASK = 9;
+const ENERGY_REGEN_AMOUNT = 25; // 25% increase
+
+const formatTime = (totalMinutes: number) => {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const mins = totalMinutes % 60;
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${period}`;
+};
+
+const parseTimeToMinutes = (timeStr: string) => {
+  const [time, period] = timeStr.split(' ');
+  let [hours, mins] = time.split(':').map(Number);
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + mins;
+};
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const getDefaultStreakData = (): StreakData => ({
-  currentStreak: 0,
-  longestStreak: 0,
-  lastLoginDate: null,
-  streakXpClaimed: false,
+const getDefaultStats = (): PlayerStats => ({
+  skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0 },
+  reputation: 10,
+  trust: { manager: 50, designer: 50, founder: 20 },
+  performanceKPIs: {
+    roas: 0,
+    cac: 0,
+    conversionRate: 0,
+    leads: 0,
+    budgetSpent: 0,
+    revenue: 0,
+    stipend: 0
+  },
+  inventory: [],
+  energy: 100
 });
 
-const getDefaultDailyData = (date: string): PlayerDailyData => ({
-  date,
-  completedChallenges: [],
-  xpEarnedToday: 0,
-  levelsCompletedToday: [],
-  perfectScoresToday: 0,
-  firstTriesToday: 0,
+const getDefaultWorldState = (): WorldState => ({
+  currentDay: 1,
+  dayProgress: 0,
+  unlockedRooms: ['marketing'],
+  narrativeFlags: [],
+  npcMoods: { manager: 5, designer: 5, founder: 3 },
+  activeCampaigns: []
 });
 
 export const useGameStore = create<GameState>()(
   persist(
     (set, get) => ({
       player: null,
+      firebaseUser: null,
       currentScreen: 'splash',
       currentLevelId: null,
       currentRoomId: null,
       currentAttempt: 1,
+      activePhaseIndex: 0,
       lastEvaluation: null,
       pendingAchievement: null,
-      showTutorial: false,
-      showDailyChallenges: false,
+      gameTime: "09:00 AM",
+      isClockedIn: false,
+      isResting: false,
+      growthData: [{ day: 0, revenue: 0, leads: 0 }],
       audio: {
         isMusicPlaying: false,
         isSfxEnabled: true,
         volume: 0.5,
       },
 
-      // Computed accessors
-      get dailyData() {
-        return get().player?.dailyData || null;
-      },
-      get streakData() {
-        return get().player?.streakData || null;
+      setPlayer: (player) => {
+        set({ player });
+        get().savePlayerProfile();
       },
 
-      setPlayer: (player) => set({ player }),
+      updatePlayer: (updates) => {
+        set((state) => ({
+          player: state.player ? { ...state.player, ...updates } : null
+        }));
+        get().savePlayerProfile();
+      },
 
-      updatePlayer: (updates) => set((state) => ({
-        player: state.player ? { ...state.player, ...updates } : null
-      })),
+      setFirebaseUser: (user) => set({ firebaseUser: user }),
 
-      setScreen: (screen) => set({ currentScreen: screen }),
+      fetchPlayerProfile: async (uid) => {
+        try {
+          const docRef = doc(db, 'players', uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            set({ player: docSnap.data() as Player });
+          }
+        } catch (error) {
+          console.error('Error fetching player profile:', error);
+        }
+      },
 
-      setCurrentLevel: (levelId) => set({ currentLevelId: levelId, currentAttempt: 1, lastEvaluation: null }),
-
-      setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
+      savePlayerProfile: async () => {
+        const { player, firebaseUser } = get();
+        if (!player || !firebaseUser) return;
+        try {
+          const docRef = doc(db, 'players', firebaseUser.uid);
+          await setDoc(docRef, player);
+        } catch (error) {
+          console.error('Error saving player profile:', error);
+        }
+      },
 
       addXP: (amount) => {
-        set((state) => {
-          if (!state.player) return state;
-          const newXP = state.player.xp + amount;
-          const newLevel = Math.floor(newXP / 500) + 1;
+        const p = get().player;
+        if (!p) return;
+        const newXP = p.xp + amount;
+        const newLevel = Math.floor(newXP / 1000) + 1;
+        get().updatePlayer({ xp: newXP, level: newLevel });
+      },
 
-          // Update daily XP tracking
-          const today = getTodayString();
-          const dailyData = state.player.dailyData?.date === today
-            ? { ...state.player.dailyData, xpEarnedToday: state.player.dailyData.xpEarnedToday + amount }
-            : { ...getDefaultDailyData(today), xpEarnedToday: amount };
-
-          return {
-            player: {
-              ...state.player,
-              xp: newXP,
-              level: newLevel,
-              dailyData,
+      updateKPIs: (impact) => {
+        const p = get().player;
+        if (!p) return;
+        const current = p.stats.performanceKPIs;
+        get().updatePlayer({
+          stats: {
+            ...p.stats,
+            performanceKPIs: {
+              roas: Math.max(0, current.roas + (impact.roas || 0)),
+              cac: Math.max(0, current.cac + (impact.cac || 0)),
+              conversionRate: Math.min(100, Math.max(0, current.conversionRate + (impact.conversionRate || 0))),
+              leads: Math.max(0, current.leads + (impact.leads || 0)),
+              budgetSpent: current.budgetSpent + (impact.budgetSpent || 0),
+              revenue: current.revenue + (impact.revenue || 0),
+              stipend: current.stipend + (impact.stipend || 0)
             }
-          };
+          }
         });
       },
 
-      completeLevel: (levelId, portfolioItem, isFirstTry = false) => {
-        set((state) => {
-          if (!state.player) return state;
-          const completedLevels = state.player.completedLevels.includes(levelId)
-            ? state.player.completedLevels
-            : [...state.player.completedLevels, levelId];
-
-          const existingIndex = state.player.portfolio.findIndex(p => p.levelId === levelId);
-          const portfolio = existingIndex >= 0
-            ? state.player.portfolio.map((p, i) => i === existingIndex ? portfolioItem : p)
-            : [...state.player.portfolio, portfolioItem];
-
-          // Update daily tracking
-          const today = getTodayString();
-          let dailyData = state.player.dailyData?.date === today
-            ? { ...state.player.dailyData }
-            : getDefaultDailyData(today);
-
-          if (!dailyData.levelsCompletedToday.includes(levelId)) {
-            dailyData.levelsCompletedToday = [...dailyData.levelsCompletedToday, levelId];
+      updateTrust: (npc, amount) => {
+        const p = get().player;
+        if (!p) return;
+        get().updatePlayer({
+          stats: {
+            ...p.stats,
+            trust: { ...p.stats.trust, [npc]: Math.min(100, Math.max(0, p.stats.trust[npc] + amount)) }
           }
-
-          if (portfolioItem.score === 100) {
-            dailyData.perfectScoresToday++;
-          }
-
-          if (isFirstTry) {
-            dailyData.firstTriesToday++;
-          }
-
-          return {
-            player: {
-              ...state.player,
-              completedLevels,
-              portfolio,
-              dailyData,
-            }
-          };
         });
-
-        // Check achievements after level completion
-        setTimeout(() => {
-          get().checkAchievements(portfolioItem.score, isFirstTry);
-        }, 100);
       },
 
-      setEvaluation: (result) => set({ lastEvaluation: result }),
+      advanceDay: () => {
+        const p = get().player;
+        if (!p) return;
+        const nextDay = p.worldState.currentDay + 1;
+        const dailyTokens = p.isPremium ? 5 : 2;
+        get().updatePlayer({
+          stamina: MAX_STAMINA,
+          tokens: p.tokens + dailyTokens,
+          stats: {
+            ...p.stats,
+            energy: 100
+          },
+          lives: MAX_LIVES,
+          worldState: { ...p.worldState, currentDay: nextDay, dayProgress: 0 }
+        });
+        set({ gameTime: "09:00 AM", isClockedIn: false, isResting: false });
+      },
 
-      incrementAttempt: () => set((state) => ({ currentAttempt: state.currentAttempt + 1 })),
+      clockIn: () => set({ isClockedIn: true, isResting: false }),
+      clockOut: () => {
+        set({ isClockedIn: false });
+        toast.success("Clocked out for the day!");
+      },
 
-      resetAttempt: () => set({ currentAttempt: 1 }),
+      sleep: () => {
+        get().advanceDay();
+        toast.success("Good morning! Ready for a new day?");
+      },
 
-      resetGame: () => set({
-        player: null,
-        currentScreen: 'splash',
-        currentLevelId: null,
-        currentRoomId: null,
-        currentAttempt: 1,
-        lastEvaluation: null
-      }),
-
-      // Lives system
-      loseLife: () => set((state) => {
-        if (!state.player) return state;
-        const newLives = Math.max(0, state.player.lives - 1);
-        return {
-          player: {
-            ...state.player,
-            lives: newLives,
-            lastLifeLostAt: newLives < state.player.lives ? new Date() : state.player.lastLifeLostAt
-          }
-        };
-      }),
-
-      regenerateLife: () => set((state) => {
-        if (!state.player) return state;
-        const newLives = Math.min(MAX_LIVES, state.player.lives + 1);
-        return {
-          player: {
-            ...state.player,
-            lives: newLives,
-            lastLifeLostAt: newLives === MAX_LIVES ? null : state.player.lastLifeLostAt
-          }
-        };
-      }),
-
-      checkLivesRegen: () => {
+      tick: () => {
         const state = get();
-        if (!state.player || state.player.lives >= MAX_LIVES || !state.player.lastLifeLostAt) return;
+        const p = state.player;
+        if (!p) return;
 
-        const timeSinceLastLost = Date.now() - new Date(state.player.lastLifeLostAt).getTime();
-        const livesToRegen = Math.floor(timeSinceLastLost / LIFE_REGEN_TIME);
+        // 1 minute real time = 1 hour game time
+        // This tick should be called every 1 second real time
+        // So 1 second real time = 1 minute game time
+        const currentMins = parseTimeToMinutes(state.gameTime);
+        const nextMins = currentMins + 1;
+        const newTimeStr = formatTime(nextMins);
 
-        if (livesToRegen > 0) {
-          const newLives = Math.min(MAX_LIVES, state.player.lives + livesToRegen);
-          set({
-            player: {
-              ...state.player,
-              lives: newLives,
-              lastLifeLostAt: newLives === MAX_LIVES ? null : new Date()
+        const isResting = nextMins >= 22 * 60 || nextMins < 9 * 60; // 10 PM to 9 AM
+
+        set({ gameTime: newTimeStr, isResting });
+
+        // Auto clock out at 10 PM
+        if (nextMins === 22 * 60 && state.isClockedIn) {
+          state.clockOut();
+          toast.info("It's 10 PM! Time to head home.");
+        }
+
+        // Regen Logic
+        state.checkStaminaRegen();
+        
+        // Life Regen if lives < MAX_LIVES
+        if (p.lives < MAX_LIVES && p.lastLifeLostAt) {
+          const now = new Date().getTime();
+          const last = new Date(p.lastLifeLostAt).getTime();
+          if (now - last >= LIFE_REGEN_TIME) {
+            get().updatePlayer({
+              lives: p.lives + 1,
+              lastLifeLostAt: p.lives + 1 >= MAX_LIVES ? null : new Date()
+            });
+          }
+        }
+
+        // Energy/Stamina slow regen during day
+        if (p.stats.energy < 100) {
+          const now = new Date().getTime();
+          const last = p.lastStaminaRegenAt ? new Date(p.lastStaminaRegenAt).getTime() : now;
+          if (!p.lastStaminaRegenAt) {
+            get().updatePlayer({ lastStaminaRegenAt: new Date() });
+          } else if (now - last >= STAMINA_REGEN_TIME) {
+            get().updatePlayer({
+              stats: {
+                ...p.stats,
+                energy: Math.min(100, p.stats.energy + ENERGY_REGEN_AMOUNT)
+              },
+              stamina: Math.min(MAX_STAMINA, p.stamina + ENERGY_REGEN_AMOUNT),
+              lastStaminaRegenAt: p.stats.energy + ENERGY_REGEN_AMOUNT >= 100 ? null : new Date()
+            });
+          }
+        }
+
+        // Energy faster regen during rest
+        if (isResting && p.stats.energy < 100) {
+          get().updatePlayer({
+            stats: {
+              ...p.stats,
+              energy: Math.min(100, p.stats.energy + 1)
             }
           });
         }
       },
 
-      canPlay: () => {
-        const state = get();
-        if (!state.player) return false;
-        // All features are now free - always allow play
+      addStipend: (amount) => {
+        const p = get().player;
+        if (!p) return;
+        get().updateKPIs({ stipend: amount });
+      },
+
+      completePhase: (levelId, phaseId, result) => {
+        const p = get().player;
+        if (!p) return;
+        const level = GAME_LEVELS.find(l => l.id === levelId);
+        const phase = level?.phases?.find(ph => ph.id === phaseId);
+        
+        if (result.passed && phase?.stipendReward) {
+          get().addStipend(phase.stipendReward);
+        }
+
+        // Energy decreases by 9% after every task
+        get().updatePlayer({
+          stats: {
+            ...p.stats,
+            energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK)
+          },
+          lastStaminaRegenAt: new Date()
+        });
+
+        // Lives decrease by one if wrong answer
+        if (!result.passed) {
+          get().updatePlayer({
+            lives: Math.max(0, p.lives - 1),
+            lastLifeLostAt: new Date()
+          });
+        }
+      },
+
+      consumeStamina: (amount) => {
+        const p = get().player;
+        if (!p || p.stamina < amount) return false;
+        get().updatePlayer({ stamina: p.stamina - amount, lastStaminaRegenAt: new Date() });
         return true;
       },
 
-      getTimeUntilNextLife: () => {
-        const state = get();
-        if (!state.player || state.player.lives >= MAX_LIVES || !state.player.lastLifeLostAt) return 0;
-
-        const timeSinceLastLost = Date.now() - new Date(state.player.lastLifeLostAt).getTime();
-        const timeInCurrentCycle = timeSinceLastLost % LIFE_REGEN_TIME;
-        return LIFE_REGEN_TIME - timeInCurrentCycle;
-      },
-
-      // Premium
-      setPremium: (isPremium, expiresAt) => set((state) => {
-        if (!state.player) return state;
-        return {
-          player: {
-            ...state.player,
-            isPremium,
-            premiumExpiresAt: expiresAt || null,
-            lives: isPremium ? MAX_LIVES : state.player.lives
-          }
-        };
-      }),
-
-      // Audio
-      setAudio: (updates) => set((state) => ({
-        audio: { ...state.audio, ...updates }
-      })),
-
-      toggleMusic: () => set((state) => ({
-        audio: { ...state.audio, isMusicPlaying: !state.audio.isMusicPlaying }
-      })),
-
-      toggleSfx: () => set((state) => ({
-        audio: { ...state.audio, isSfxEnabled: !state.audio.isSfxEnabled }
-      })),
-
-      // Leaderboard sync
-      syncToLeaderboard: async () => {
-        // Supabase sync removed - local only
-        console.log("Local leaderboard sync - Supabase removed");
-      },
-
-      // Achievements
-      checkAchievements: (score?: number, isFirstTry?: boolean) => {
-        const state = get();
-        if (!state.player) return;
-
-        const unlockedIds = state.player.achievements?.map(a => a.achievementId) || [];
-        let newAchievement: Achievement | null = null;
-        let xpToAdd = 0;
-        const newUnlockedAchievements: UnlockedAchievement[] = [];
-
-        for (const achievement of ACHIEVEMENTS) {
-          if (unlockedIds.includes(achievement.id)) continue;
-
-          let unlocked = false;
-
-          switch (achievement.requirement.type) {
-            case 'levels_completed':
-              unlocked = state.player.completedLevels.length >= achievement.requirement.value;
-              break;
-            case 'total_xp':
-              unlocked = state.player.xp >= achievement.requirement.value;
-              break;
-            case 'perfect_score':
-              unlocked = score !== undefined && score >= achievement.requirement.value;
-              break;
-            case 'first_try':
-              unlocked = isFirstTry === true;
-              break;
-            case 'all_levels':
-              unlocked = state.player.completedLevels.length >= GAME_LEVELS.length;
-              break;
-            case 'room_completed':
-              if (achievement.requirement.roomId) {
-                const room = OFFICE_ROOMS.find(r => r.id === achievement.requirement.roomId);
-                if (room) {
-                  const roomLevelIds = room.levels;
-                  const completedInRoom = roomLevelIds.filter(id =>
-                    state.player!.completedLevels.includes(id)
-                  ).length;
-                  unlocked = completedInRoom >= roomLevelIds.length;
-                }
-              }
-              break;
-          }
-
-          if (unlocked) {
-            newUnlockedAchievements.push({
-              achievementId: achievement.id,
-              unlockedAt: new Date(),
-            });
-            xpToAdd += achievement.xpReward;
-            if (!newAchievement) {
-              newAchievement = achievement;
-            }
-          }
-        }
-
-        if (newUnlockedAchievements.length > 0) {
-          set((state) => {
-            if (!state.player) return state;
-            const existingAchievements = state.player.achievements || [];
-            return {
-              player: {
-                ...state.player,
-                achievements: [...existingAchievements, ...newUnlockedAchievements],
-                xp: state.player.xp + xpToAdd,
-              },
-              pendingAchievement: newAchievement,
-            };
+      checkStaminaRegen: () => {
+        const p = get().player;
+        if (!p || p.stamina >= MAX_STAMINA || !p.lastStaminaRegenAt) return;
+        const now = new Date().getTime();
+        const last = new Date(p.lastStaminaRegenAt).getTime();
+        const pointsToRegen = Math.floor((now - last) / STAMINA_REGEN_TIME);
+        if (pointsToRegen > 0) {
+          get().updatePlayer({
+            stamina: Math.min(MAX_STAMINA, p.stamina + pointsToRegen),
+            lastStaminaRegenAt: pointsToRegen >= (MAX_STAMINA - p.stamina) ? null : new Date()
           });
         }
       },
 
-      clearPendingAchievement: () => set({ pendingAchievement: null }),
-
-      // Level unlocking - sequential progression
-      isLevelUnlocked: (levelId: number) => {
-        const state = get();
-        if (!state.player) return false;
-
-        // Level 1 is always unlocked
-        if (levelId === 1) return true;
-
-        // Check if previous level is completed
-        const previousLevelCompleted = state.player.completedLevels.includes(levelId - 1);
-        return previousLevelCompleted;
+      addTokens: (amount) => {
+        const p = get().player;
+        if (!p) return;
+        get().updatePlayer({ tokens: p.tokens + amount });
       },
 
-      // Tutorial
-      setShowTutorial: (show) => set({ showTutorial: show }),
+      useToken: (amount) => {
+        const p = get().player;
+        if (!p || p.tokens < amount) return false;
+        get().updatePlayer({ tokens: p.tokens - amount });
+        return true;
+      },
 
-      completeTutorial: () => set((state) => ({
-        showTutorial: false,
-        player: state.player ? { ...state.player, hasSeenTutorial: true } : null
-      })),
-
-      // Daily challenges & Streak
-      setShowDailyChallenges: (show) => set({ showDailyChallenges: show }),
-
-      checkDailyLogin: () => {
-        const state = get();
-        if (!state.player) return;
-
-        const today = getTodayString();
-        const streakData = state.player.streakData || getDefaultStreakData();
-        const lastLogin = streakData.lastLoginDate;
-
-        let newStreak = streakData.currentStreak;
-        let streakBroken = false;
-
-        if (lastLogin) {
-          const lastLoginDate = new Date(lastLogin);
-          const todayDate = new Date(today);
-          const diffDays = Math.floor((todayDate.getTime() - lastLoginDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          if (diffDays === 0) {
-            // Same day, no change
-            return;
-          } else if (diffDays === 1) {
-            // Consecutive day
-            newStreak++;
-          } else {
-            // Streak broken
-            newStreak = 1;
-            streakBroken = true;
-          }
-        } else {
-          // First login
-          newStreak = 1;
-        }
-
-        const newStreakData: StreakData = {
-          currentStreak: newStreak,
-          longestStreak: Math.max(newStreak, streakData.longestStreak),
-          lastLoginDate: today,
-          streakXpClaimed: false,
+      completeLevel: (levelId, portfolioItem, isFirstTry = false) => {
+        const p = get().player;
+        if (!p) return;
+        const level = GAME_LEVELS.find(l => l.id === levelId);
+        if (!level) return;
+        const completedLevels = p.completedLevels.includes(levelId) ? p.completedLevels : [...p.completedLevels, levelId];
+        const portfolio = [...p.portfolio, portfolioItem];
+        const impact = portfolioItem.feedback.kpiImpact || level.simulationImpact || {};
+        const stipendEarned = (portfolioItem.score / 100) * (level.stipendReward || 0);
+        const currentKPIs = p.stats.performanceKPIs;
+        const updatedKPIs: MarketingKPIs = {
+          roas: Math.max(0, currentKPIs.roas + (impact.roas || 0)),
+          cac: Math.max(0, currentKPIs.cac + (impact.cac || 0)),
+          conversionRate: Math.min(100, Math.max(0, currentKPIs.conversionRate + (impact.conversionRate || 0))),
+          leads: Math.max(0, currentKPIs.leads + (impact.leads || 0)),
+          budgetSpent: currentKPIs.budgetSpent + (impact.budgetSpent || 0),
+          revenue: currentKPIs.revenue + (impact.revenue || 0),
+          stipend: currentKPIs.stipend + stipendEarned
         };
-
-        // Reset daily data for new day
-        const dailyData = state.player.dailyData?.date === today
-          ? state.player.dailyData
-          : getDefaultDailyData(today);
-
-        set({
-          player: {
-            ...state.player,
-            streakData: newStreakData,
-            dailyData,
-          },
-          showDailyChallenges: true, // Show daily challenges popup on login
+        const newGrowthData = [...get().growthData, { 
+          day: p.worldState.currentDay, 
+          revenue: updatedKPIs.revenue,
+          leads: updatedKPIs.leads 
+        }];
+        get().updatePlayer({
+          completedLevels,
+          portfolio,
+          stats: { ...p.stats, performanceKPIs: updatedKPIs, energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK) },
+          lastStaminaRegenAt: new Date()
         });
+
+        // Lives decrease by one if wrong answer (final check for non-phase levels)
+        if (portfolioItem.score < (level.rubric.passingScore || 60)) {
+            get().updatePlayer({
+                lives: Math.max(0, p.lives - 1),
+                lastLifeLostAt: new Date()
+            });
+        }
+        set({ growthData: newGrowthData });
+        get().addXP(isFirstTry ? 500 : 200);
+        get().checkAchievements(portfolioItem.score, isFirstTry);
       },
 
-      claimStreakBonus: () => set((state) => {
-        if (!state.player || !state.player.streakData) return state;
-        return {
-          player: {
-            ...state.player,
-            streakData: {
-              ...state.player.streakData,
-              streakXpClaimed: true,
-            },
-          },
-        };
-      }),
-
-      updateDailyProgress: (type, value) => set((state) => {
-        if (!state.player) return state;
-
-        const today = getTodayString();
-        let dailyData = state.player.dailyData?.date === today
-          ? { ...state.player.dailyData }
-          : getDefaultDailyData(today);
-
-        switch (type) {
-          case 'level':
-            if (value && !dailyData.levelsCompletedToday.includes(value)) {
-              dailyData.levelsCompletedToday = [...dailyData.levelsCompletedToday, value];
-            }
-            break;
-          case 'xp':
-            dailyData.xpEarnedToday += value || 0;
-            break;
-          case 'perfectScore':
-            dailyData.perfectScoresToday++;
-            break;
-          case 'firstTry':
-            dailyData.firstTriesToday++;
-            break;
+      setScreen: (screen) => set({ currentScreen: screen }),
+      setCurrentLevel: (levelId) => set({ currentLevelId: levelId, currentAttempt: 1, activePhaseIndex: 0, lastEvaluation: null }),
+      setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
+      setActivePhaseIndex: (index) => set({ activePhaseIndex: index }),
+      nextPhase: () => set((state) => ({ activePhaseIndex: state.activePhaseIndex + 1, lastEvaluation: null })),
+      setEvaluation: (result) => set({ lastEvaluation: result }),
+      incrementAttempt: () => set((state) => ({ currentAttempt: state.currentAttempt + 1 })),
+      resetAttempt: () => set({ currentAttempt: 1 }),
+      setAudio: (updates) => set((state) => ({ audio: { ...state.audio, ...updates } })),
+      toggleMusic: () => set((state) => ({ audio: { ...state.audio, isMusicPlaying: !state.audio.isMusicPlaying } })),
+      toggleSfx: () => set((state) => ({ audio: { ...state.audio, isSfxEnabled: !state.audio.isSfxEnabled } })),
+      clearPendingAchievement: () => set({ pendingAchievement: null }),
+      checkAchievements: () => {},
+      isLevelUnlocked: (levelId) => {
+        const p = get().player;
+        if (!p) return false;
+        if (levelId === 1) return true;
+        return p.completedLevels.includes(levelId - 1);
+      },
+      retryLevel: () => {
+        const { player: p, useToken, consumeStamina, resetAttempt, setScreen } = get();
+        if (!p) return false;
+        if (p.tokens >= 1) {
+          useToken(1);
+          resetAttempt();
+          setScreen('level');
+          return true;
+        } else if (p.stamina >= 20) {
+          consumeStamina(20);
+          resetAttempt();
+          setScreen('level');
+          return true;
         }
-
-        return {
-          player: {
-            ...state.player,
-            dailyData,
-          },
-        };
-      }),
-
-      completeDailyChallenge: (challengeId) => set((state) => {
-        if (!state.player || !state.player.dailyData) return state;
-
-        if (state.player.dailyData.completedChallenges.includes(challengeId)) {
-          return state;
-        }
-
-        return {
-          player: {
-            ...state.player,
-            dailyData: {
-              ...state.player.dailyData,
-              completedChallenges: [...state.player.dailyData.completedChallenges, challengeId],
-            },
-          },
-        };
-      }),
+        setScreen('no-lives');
+        return false;
+      },
+      earnRetryToken: () => {
+        get().addTokens(1);
+        get().addXP(50);
+        toast.success("Lesson Complete! +1 Retry Token Earned.");
+      },
+      canPlay: () => {
+        const p = get().player;
+        if (!p) return false;
+        return p.isPremium || p.stamina >= LEVEL_STAMINA_COST;
+      },
+      useAIToken: (levelId) => {
+        const p = get().player;
+        if (!p) return;
+        const currentFlags = p.worldState.narrativeFlags || [];
+        const usedCount = currentFlags.filter(f => f.startsWith(`ai_token_${levelId}_`)).length;
+        if (usedCount >= 4) return;
+        get().updatePlayer({ worldState: { ...p.worldState, narrativeFlags: [...currentFlags, `ai_token_${levelId}_${usedCount + 1}`] } });
+      },
+      getAITokensLeft: (levelId) => {
+        const p = get().player;
+        if (!p) return 0;
+        const currentFlags = p.worldState.narrativeFlags || [];
+        const usedCount = currentFlags.filter(f => f.startsWith(`ai_token_${levelId}_`)).length;
+        return Math.max(0, 4 - usedCount);
+      },
+      addAISuggestion: () => {},
+      resetGame: () => set({ player: null, currentScreen: 'splash', currentLevelId: null, currentRoomId: null })
     }),
-    {
-      name: 'marketcraft-game-storage'
-    }
+    { name: 'marketcraft-v4-nuclear' }
   )
 );

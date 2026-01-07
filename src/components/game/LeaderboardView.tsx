@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ export const LeaderboardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'xp' | 'levels' | 'score'>('xp');
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     setIsLoading(true);
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -60,7 +60,7 @@ export const LeaderboardView: React.FC = () => {
           avatar_style: player.avatarStyle
         };
 
-        if (!mockEntries.find(e => e.player_id === player.id)) {
+        if (!mockEntries.find(entry => entry.player_id === player.id)) {
           mockEntries.push(playerEntry);
         }
       }
@@ -77,11 +77,11 @@ export const LeaderboardView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [player, activeTab]);
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [activeTab]);
+  }, [fetchLeaderboard]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

@@ -14,43 +14,36 @@ import { NoLivesScreen } from './NoLivesScreen';
 import { PremiumScreen } from './PremiumScreen';
 import { LeaderboardView } from './LeaderboardView';
 import { AchievementsView } from './AchievementsView';
-import { AchievementNotification } from './AchievementNotification';
-import { AnimatedBackground } from './AnimatedBackground';
-import { FloatingParticles } from './FloatingParticles';
-import { TutorialWalkthrough } from './TutorialWalkthrough';
-import { DailyChallengesModal } from './DailyChallengesModal';
+import { SimulationView } from './SimulationView';
+import { CertificationView } from './CertificationView';
+import { AIAssistant } from './AIAssistant';
+import { BackgroundMusic } from './BackgroundMusic';
+
+import { AuthView } from './AuthView';
 
 export const GameContainer: React.FC = () => {
-  const { 
-    currentScreen, 
+  const {
+    currentScreen,
     currentLevelId,
-    pendingAchievement, 
-    clearPendingAchievement,
     player,
-    showTutorial,
-    setShowTutorial,
-    completeTutorial,
-    showDailyChallenges,
-    setShowDailyChallenges,
-    checkDailyLogin
+    setScreen,
+    tick
   } = useGameStore();
 
-  // Check daily login when entering office hub
   useEffect(() => {
-    if (currentScreen === 'office-hub' && player) {
-      checkDailyLogin();
-      
-      // Show tutorial for first-time players
-      if (!player.hasSeenTutorial) {
-        setShowTutorial(true);
-      }
-    }
-  }, [currentScreen, player, checkDailyLogin, setShowTutorial]);
+    if (!player) return;
+    const interval = setInterval(() => {
+      tick();
+    }, 1000); // 1 second real time = 1 minute game time
+    return () => clearInterval(interval);
+  }, [player, tick]);
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'splash':
         return <SplashScreen />;
+      case 'auth':
+        return <AuthView />;
       case 'character-creation':
         return <CharacterCreation />;
       case 'office-hub':
@@ -58,9 +51,8 @@ export const GameContainer: React.FC = () => {
       case 'room':
         return <RoomView />;
       case 'level': {
-        // Check if it's a canvas-based creative level
         const level = GAME_LEVELS.find(l => l.id === currentLevelId);
-        if (level?.taskType === 'canvas') {
+        if (level?.taskType === 'creative-canvas') {
           return <CreativeLevelPlay />;
         }
         return <LevelPlay />;
@@ -79,35 +71,25 @@ export const GameContainer: React.FC = () => {
         return <LeaderboardView />;
       case 'achievements':
         return <AchievementsView />;
+      case 'simulation':
+        return <SimulationView />;
+      case 'certification':
+        return <CertificationView />;
       default:
         return <SplashScreen />;
     }
   };
 
   return (
-    <div className="min-h-screen relative">
-      <AnimatedBackground />
-      <FloatingParticles count={25} />
+    <div className="min-h-screen relative bg-background">
+      <BackgroundMusic />
       {renderScreen()}
-      
-      {/* Achievement notification */}
-      <AchievementNotification
-        achievement={pendingAchievement}
-        onComplete={clearPendingAchievement}
-      />
-
-      {/* Tutorial for first-time players */}
-      <TutorialWalkthrough
-        isOpen={showTutorial}
-        onComplete={completeTutorial}
-        onSkip={completeTutorial}
-      />
-
-      {/* Daily challenges modal */}
-      <DailyChallengesModal
-        isOpen={showDailyChallenges && !showTutorial}
-        onClose={() => setShowDailyChallenges(false)}
-      />
+      {player && (currentScreen === 'office-hub' || currentScreen === 'room' || currentScreen === 'level') && (
+        <AIAssistant 
+          levelId={currentLevelId || (player.completedLevels.length + 1)} 
+          taskPrompt={GAME_LEVELS.find(l => l.id === currentLevelId)?.taskPrompt || "Strategic consultation requested."} 
+        />
+      )}
     </div>
   );
 };

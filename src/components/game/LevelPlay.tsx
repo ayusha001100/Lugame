@@ -2,21 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GAME_LEVELS } from '@/data/levels';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft,
-  Send,
-  Lightbulb,
+  Zap,
+  Trophy,
   Clock,
-  Star,
+  Target,
+  Coins,
+  ChevronRight,
+  HelpCircle,
   Heart,
-  Loader2
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAudio } from '@/hooks/useAudio';
 import { evaluateSubmission } from '@/lib/evaluation';
 import { toast } from 'sonner';
 import { NPCDialogueBox } from './NPCDialogueBox';
+import { TaskRenderer } from './tasks/TaskRenderer';
+import { DialogueNode, DialogueOption, PortfolioItem } from '@/types/game';
 
 export const LevelPlay: React.FC = () => {
   const {
@@ -24,251 +29,375 @@ export const LevelPlay: React.FC = () => {
     currentLevelId,
     currentAttempt,
     setScreen,
-    setEvaluation,
-    incrementAttempt,
     addXP,
     completeLevel,
-    loseLife,
-    canPlay
+    consumeStamina,
+    updateKPIs,
+    updateTrust,
+    useToken,
+    completePhase,
+    lastEvaluation,
+    activePhaseIndex,
+    nextPhase,
+    isClockedIn,
+    setEvaluation,
+    incrementAttempt
   } = useGameStore();
 
   const { playSfx } = useAudio();
-  const [dialogueIndex, setDialogueIndex] = useState(0);
+  const [currentNode, setCurrentNode] = useState<DialogueNode | null>(null);
   const [showTask, setShowTask] = useState(false);
-  const [submission, setSubmission] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [showHints, setShowHints] = useState(false);
+  const [phaseSubmissions, setPhaseSubmissions] = useState<Record<string, any>>({});
 
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
+  const currentPhase = level?.phases?.[activePhaseIndex];
+
+  const getHints = () => {
+    const baseHints = currentPhase?.taskHints || level?.taskHints || [];
+    const defaultHints = [
+      "Analyze the psychological drivers: Identify if the audience is motivated by 'fear of loss' or 'gain of status'.",
+      "Calibrate terminology: Use industry-standard shorthand (CAC, LTV, ROAS) to demonstrate strategic maturity.",
+      "Check NPC Alignment: The Director values efficiency; ensure your decision prioritizes speed and scalability.",
+      "Data-Driven Logic: Look for the specific performance target mentioned in the initial briefing panel.",
+      "Risk Mitigation: Evaluate the long-term impact of this decision on the overall acquisition funnel."
+    ];
+    
+    // Combine and ensure exactly 5 detailed points
+    const combined = [...baseHints];
+    while (combined.length < 5) {
+      combined.push(defaultHints[combined.length % defaultHints.length]);
+    }
+    return combined.slice(0, 5);
+  };
+
+  const hints = getHints();
 
   useEffect(() => {
-    if (!canPlay() && !player?.isPremium) {
-      setScreen('no-lives');
+    if (level && level.npcDialogue && level.npcDialogue.length > 0) {
+      setCurrentNode(level.npcDialogue[0]);
     }
-  }, [canPlay, player, setScreen]);
+    // Reset phases when level changes
+    setPhaseSubmissions({});
+    setShowTask(false);
+  }, [currentLevelId, level]);
 
   if (!player || !level) return null;
 
-  const getNpcType = (room: string): 'manager' | 'designer' | 'analyst' | 'founder' | 'media' => {
-    const npcTypes: Record<string, 'manager' | 'designer' | 'analyst' | 'founder' | 'media'> = {
-      marketing: 'manager',
-      content: 'designer',
-      ads: 'media',
-      analytics: 'analyst',
-      manager: 'founder',
-    };
-    return npcTypes[room] || 'manager';
+  const getNpcType = (room: string): any => {
+    const types: any = { marketing: 'manager', content: 'designer', ads: 'media', analytics: 'analyst', manager: 'founder' };
+    return types[room] || 'manager';
   };
 
   const handleDialogueContinue = () => {
+    if (!isClockedIn) {
+      toast.error("Shift inactive. Clock in to proceed.");
+      setScreen('office-hub');
+      return;
+    }
     playSfx('click');
-    if (dialogueIndex < level.npcDialogue.length - 1) {
-      setDialogueIndex(prev => prev + 1);
+    const currentIndex = level.npcDialogue.indexOf(currentNode!);
+    if (currentIndex < level.npcDialogue.length - 1) {
+      setCurrentNode(level.npcDialogue[currentIndex + 1]);
     } else {
       playSfx('transition');
       setShowTask(true);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!submission.trim()) return;
+  const handleChoice = (option: DialogueOption) => {
+    if (!isClockedIn) {
+      toast.error("Shift inactive. Clock in to proceed.");
+      setScreen('office-hub');
+      return;
+    }
+    const nextNode = level.npcDialogue.find(n => n.id === option.nextId);
+    if (nextNode) {
+      setCurrentNode(nextNode);
+    } else {
+      setShowTask(true);
+    }
+  };
 
+  const onTaskComplete = async (submission: any) => {
     setIsEvaluating(true);
     playSfx('click');
 
     try {
-      const data = await evaluateSubmission(submission.trim(), {
-        criteria: level.rubric.criteria.map(c => ({
-          name: c.name,
-          description: c.description,
-          weight: c.weight
-        })),
-        passingScore: level.rubric.passingScore
+      const currentPhase = level.phases ? level.phases[activePhaseIndex] : null;
+      
+      const evaluationData = await evaluateSubmission(submission, {
+        levelId: level.id,
+        criteria: level.rubric.criteria,
+        passingScore: level.rubric.passingScore,
+        taskType: currentPhase ? currentPhase.taskType : (level.taskType as any),
+        levelTitle: level.title,
+        levelPrompt: currentPhase ? currentPhase.taskPrompt : (level.taskPrompt || ""),
+        attempt: currentAttempt
       });
 
       const evaluation = {
-        score: data.overallScore,
-        passed: data.passed,
-        feedback: data.feedback,
-        criteriaScores: data.criteriaScores,
-        improvement: data.improvement,
+        ...evaluationData,
         canRetry: currentAttempt < level.rubric.maxAttempts,
         attemptsLeft: level.rubric.maxAttempts - currentAttempt
       };
 
-      setEvaluation(evaluation);
+      setEvaluation(evaluation as any);
+      
+      if (level.phases && activePhaseIndex < level.phases.length - 1) {
+          setPhaseSubmissions(prev => ({ ...prev, [level.phases![activePhaseIndex].id]: submission }));
+          
+          completePhase(level.id, level.phases[activePhaseIndex].id, {
+            id: level.phases[activePhaseIndex].id,
+            score: evaluation.score,
+            passed: evaluation.passed,
+            feedback: evaluation.feedback,
+            managerMood: evaluation.managerMood as any,
+            managerMessage: evaluation.managerMessage || ""
+          });
 
-      if (data.passed) {
+          setScreen('evaluation');
+          return;
+      }
+
+      const finalSubmission = level.phases 
+          ? { ...phaseSubmissions, [level.phases[activePhaseIndex].id]: submission }
+          : submission;
+
+      if (evaluation.passed) {
         playSfx('success');
-        addXP(level.xpReward);
-        const isFirstTry = currentAttempt === 1;
-        completeLevel(level.id, {
+        const impact = evaluation.kpiImpact || level.simulationImpact;
+        if (impact) updateKPIs(impact);
+        updateTrust(getNpcType(level.room), 5);
+
+        const portfolioItem: PortfolioItem = {
           levelId: level.id,
           title: level.title,
-          content: submission,
-          score: data.overallScore,
-          feedback: data.feedback,
+          category: level.room.toUpperCase() as any,
+          content: finalSubmission,
+          score: evaluation.score,
+          feedback: evaluation as any,
+          isPublished: false,
           completedAt: new Date()
-        }, isFirstTry);
+        };
+
+        completeLevel(level.id, portfolioItem, currentAttempt === 1);
       } else {
         playSfx('failure');
-        if (!player.isPremium) {
-          loseLife();
-        }
-        if (evaluation.canRetry) {
-          incrementAttempt();
-        }
+        updateTrust(getNpcType(level.room), -10);
+        if (evaluation.canRetry) incrementAttempt();
       }
 
       setScreen('evaluation');
 
     } catch (error) {
       console.error('Evaluation error:', error);
-      toast.error('Failed to evaluate submission. Please try again.');
+      toast.error('Evaluation system offline.');
     } finally {
       setIsEvaluating(false);
     }
   };
 
   return (
-    <div className="min-h-screen p-6 md:p-8">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <Button
-          variant="glass"
-          size="icon"
-          onClick={() => {
-            playSfx('click');
-            setScreen('room');
-          }}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-
-        <div className="flex items-center gap-4">
-          {/* Lives */}
-          <div className="flex items-center gap-1 glass-card rounded-lg px-3 py-1.5">
-            {[...Array(player.maxLives)].map((_, i) => (
-              <Heart
-                key={i}
-                className={cn(
-                  'w-3.5 h-3.5 transition-all',
-                  i < player.lives
-                    ? 'text-red-500 fill-red-500'
-                    : 'text-muted-foreground/30'
-                )}
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 relative">
+      {/* Top Left Trust Matrix - HUD Style */}
+      <div className="fixed top-[120px] left-8 z-40 hidden xl:block animate-fade-in">
+        <div className="bg-black/40 backdrop-blur-xl rounded-[1.5rem] p-5 border border-white/10 shadow-2xl min-w-[240px]">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-primary/60">Relationship</span>
+                <h3 className="text-sm font-black italic uppercase tracking-tighter text-white">Trust Matrix</h3>
+              </div>
+              <div className="text-2xl font-black italic text-primary leading-none">
+                {player.stats.trust[getNpcType(level.room) as 'manager']}%
+              </div>
+            </div>
+            
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-primary shadow-[0_0_15px_rgba(234,179,8,0.4)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${player.stats.trust[getNpcType(level.room) as 'manager']}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
               />
+            </div>
+
+            <div className="flex items-center gap-2 opacity-60">
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px]">
+                {getNpcType(level.room) === 'manager' ? '👩‍💼' : (getNpcType(level.room) === 'designer' ? '🎨' : '🏢')}
+              </div>
+              <p className="text-[8px] font-black text-white uppercase tracking-widest leading-none">
+                {level.npcName} • {getNpcType(level.room).toUpperCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side Hints Panel - HUD Style */}
+      <div className="fixed top-[120px] right-8 z-40 hidden 2xl:block w-[280px] animate-fade-in">
+        <div className="bg-black/40 backdrop-blur-xl rounded-[1.5rem] p-6 border border-white/10 shadow-2xl space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+              <HelpCircle className="w-4 h-4 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-white">Mission Intel</h3>
+              <p className="text-[7px] font-black uppercase text-amber-500 tracking-tighter">Strategist Guide</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {hints.map((hint, i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * i }}
+                className="flex gap-3 group"
+              >
+                <span className="text-sm font-black italic text-amber-500/20 group-hover:text-amber-500/40 transition-colors leading-none pt-0.5">0{i + 1}</span>
+                <p className="text-[10px] font-bold text-white/60 leading-relaxed group-hover:text-white transition-colors italic">
+                  {hint}
+                </p>
+              </motion.div>
             ))}
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Attempt {currentAttempt}/{level.rubric.maxAttempts}</span>
+          <div className="pt-4 border-t border-white/5 flex items-center gap-2 text-primary opacity-30">
+            <Sparkles className="w-2.5 h-2.5" />
+            <span className="text-[7px] font-black uppercase tracking-widest">MarketCraft Protocol</span>
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Star className="w-4 h-4 text-primary" />
-            <span className="text-primary font-semibold">{level.xpReward} XP</span>
+        </div>
+      </div>
+
+      <header className="p-6 md:p-8 flex items-center justify-between border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-6">
+          <Button
+            variant="glass"
+            size="icon"
+            onClick={() => setScreen('room')}
+            className="rounded-2xl"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex flex-col">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Mission Protocol</h2>
+            <h1 className="text-xl font-black italic tracking-tight">{level.title}</h1>
+            {level.phases && (
+                <div className="flex gap-1 mt-1">
+                    {level.phases.map((_, i) => (
+                        <div key={i} className={cn("h-1 w-8 rounded-full", i <= activePhaseIndex ? "bg-primary" : "bg-muted")} />
+                    ))}
+                </div>
+            )}
           </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-6 mr-6">
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Resources</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-bold tabular-nums">{player.stats.energy}%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-xs font-bold tabular-nums">{player.tokens}</span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-2">
+                    {[...Array(3)].map((_, i) => (
+                        <Heart 
+                            key={i} 
+                            className={cn("w-3 h-3", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-muted/30")} 
+                        />
+                    ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="h-6 w-px bg-border" />
+
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Attempts</span>
+              <div className="flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-xs font-bold tabular-nums">{currentAttempt} / {level.rubric.maxAttempts}</span>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="glass"
+            size="sm"
+            className="rounded-xl border-border h-10 px-4"
+            onClick={() => {
+              if (useToken(1)) {
+                toast.success("Hint protocol activated!");
+              } else {
+                toast.error("Insufficient tokens.");
+              }
+            }}
+          >
+            <HelpCircle className="w-4 h-4 mr-2" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Query Intel</span>
+          </Button>
         </div>
       </header>
 
-      {/* Level Info */}
-      <div className="mb-6 animate-fade-up">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="xp-badge">Level {level.id}</div>
-          <h1 className="text-2xl font-bold">{level.title}</h1>
-        </div>
-        <p className="text-muted-foreground">{level.subtitle}</p>
-      </div>
-
-      {/* NPC Dialogue or Task */}
-      {!showTask ? (
-        <div className="animate-fade-up">
-          <NPCDialogueBox
-            npcName={level.npcName}
-            npcRole={level.npcRole}
-            npcType={getNpcType(level.room)}
-            dialogue={level.npcDialogue[dialogueIndex]}
-            dialogueIndex={dialogueIndex}
-            totalDialogues={level.npcDialogue.length}
-            onContinue={handleDialogueContinue}
-            isLastDialogue={dialogueIndex >= level.npcDialogue.length - 1}
-          />
-        </div>
-      ) : (
-        <div className="max-w-3xl mx-auto animate-fade-up">
-          {/* Task Card */}
-          <div className="glass-card rounded-2xl p-6 mb-6 border-l-4 border-primary">
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <span className="text-2xl">📝</span>
-              Your Task
-            </h3>
-            <p className="text-muted-foreground leading-relaxed">{level.taskPrompt}</p>
+      <main className="max-w-4xl mx-auto p-6 md:p-12 pb-32">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 mb-12"
+        >
+          <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary uppercase tracking-widest">
+            {level.room} :: {level.difficulty}
           </div>
-
-          {/* Hints Toggle */}
-          <button
-            onClick={() => setShowHints(!showHints)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4 group"
-          >
-            <Lightbulb className={cn(
-              'w-4 h-4 transition-colors',
-              showHints && 'text-primary'
-            )} />
-            {showHints ? 'Hide Hints' : 'Show Hints'}
-          </button>
-
-          {showHints && (
-            <div className="glass-card rounded-xl p-4 mb-6 animate-fade-up border-l-4 border-primary/50">
-              <ul className="space-y-2">
-                {level.taskHints.map((hint, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                    <span className="text-primary mt-0.5">💡</span>
-                    {hint}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Submission Area */}
-          <div className="mb-6">
-            <Textarea
-              value={submission}
-              onChange={(e) => setSubmission(e.target.value)}
-              placeholder="Type your submission here..."
-              className="min-h-[240px] bg-card border-border focus:border-primary resize-none task-input text-base leading-relaxed"
-            />
-            <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
-              <span>{submission.length} characters</span>
-              <span className="hidden md:block">Press ⌘+Enter to submit</span>
-            </div>
+          <div className="w-1.5 h-1.5 rounded-full bg-muted" />
+          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            {level.competencies.join(' • ')}
           </div>
+        </motion.div>
 
-          {/* Submit Button */}
-          <div className="flex justify-end">
-            <Button
-              variant="glow"
-              size="xl"
-              onClick={handleSubmit}
-              disabled={!submission.trim() || isEvaluating}
-              className="min-w-[200px]"
+        <AnimatePresence mode="wait">
+          {!showTask && currentNode ? (
+            <motion.div
+              key="dialogue"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
             >
-              {isEvaluating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Evaluating...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  Submit for Review
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
+              <NPCDialogueBox
+                npcName={level.npcName}
+                npcRole={level.npcRole}
+                npcType={getNpcType(level.room)}
+                node={currentNode}
+                onChoice={handleChoice}
+                onContinue={handleDialogueContinue}
+                isLast={level.npcDialogue.indexOf(currentNode) === level.npcDialogue.length - 1}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`task-phase-${activePhaseIndex}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-12"
+            >
+              <TaskRenderer
+                level={level}
+                onComplete={onTaskComplete}
+                isEvaluating={isEvaluating}
+                activePhaseIndex={activePhaseIndex}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 };

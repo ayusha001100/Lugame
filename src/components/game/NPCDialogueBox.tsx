@@ -2,193 +2,163 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CharacterAvatar, AvatarExpression, AvatarGesture } from './CharacterAvatar';
+import { DialogueNode, DialogueOption } from '@/types/game';
+import { useGameStore } from '@/store/gameStore';
+import { useAudio } from '@/hooks/useAudio';
 
 interface NPCDialogueBoxProps {
   npcName: string;
   npcRole: string;
   npcType: 'manager' | 'designer' | 'analyst' | 'founder' | 'media';
-  dialogue: string;
-  dialogueIndex: number;
-  totalDialogues: number;
+  node: DialogueNode;
+  onChoice: (option: DialogueOption) => void;
   onContinue: () => void;
-  isLastDialogue: boolean;
+  isLast: boolean;
 }
 
-// Map dialogue patterns to expressions
-const getExpressionFromDialogue = (text: string, index: number): AvatarExpression => {
-  const lowerText = text.toLowerCase();
-  if (lowerText.includes('welcome') || lowerText.includes('great') || lowerText.includes('excellent')) return 'happy';
-  if (lowerText.includes('need') || lowerText.includes('task') || lowerText.includes('want')) return 'serious';
-  if (lowerText.includes('think') || lowerText.includes('consider') || lowerText.includes('remember')) return 'thinking';
-  if (lowerText.includes('!') || lowerText.includes('prove') || lowerText.includes('show')) return 'excited';
-  if (index === 0) return 'encouraging';
+const getExpressionFromNode = (node: DialogueNode): AvatarExpression => {
+  if (node.emotion) return node.emotion as AvatarExpression;
+  const lowerText = node.text.toLowerCase();
+  if (lowerText.includes('welcome') || lowerText.includes('great')) return 'happy';
+  if (lowerText.includes('need') || lowerText.includes('task')) return 'serious';
+  if (lowerText.includes('think')) return 'thinking';
   return 'neutral';
-};
-
-// Map dialogue patterns to gestures
-const getGestureFromDialogue = (text: string, index: number, total: number): AvatarGesture => {
-  const lowerText = text.toLowerCase();
-  if (index === 0) return 'waving';
-  if (lowerText.includes('your task') || lowerText.includes('i need')) return 'pointing';
-  if (lowerText.includes('show') || lowerText.includes('design') || lowerText.includes('create')) return 'presenting';
-  if (index === total - 1) return 'nodding';
-  return 'idle';
 };
 
 export const NPCDialogueBox: React.FC<NPCDialogueBoxProps> = ({
   npcName,
   npcRole,
   npcType,
-  dialogue,
-  dialogueIndex,
-  totalDialogues,
+  node,
+  onChoice,
   onContinue,
-  isLastDialogue,
+  isLast,
 }) => {
+  const { updateTrust, updatePlayer, player } = useGameStore();
+  const { playSfx } = useAudio();
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
 
-  const expression = getExpressionFromDialogue(dialogue, dialogueIndex);
-  const gesture = getGestureFromDialogue(dialogue, dialogueIndex, totalDialogues);
+  const expression = getExpressionFromNode(node);
 
-  // Typewriter effect
   useEffect(() => {
     setDisplayedText('');
     setIsTyping(true);
     let index = 0;
     const timer = setInterval(() => {
-      if (index < dialogue.length) {
-        setDisplayedText(dialogue.slice(0, index + 1));
+      if (index < node.text.length) {
+        setDisplayedText(node.text.slice(0, index + 1));
         index++;
       } else {
         setIsTyping(false);
         clearInterval(timer);
       }
-    }, 25);
+    }, 20);
     return () => clearInterval(timer);
-  }, [dialogue]);
+  }, [node]);
 
-  const handleClick = () => {
-    if (isTyping) {
-      setDisplayedText(dialogue);
-      setIsTyping(false);
-    } else {
-      onContinue();
+  const handleOptionClick = (option: DialogueOption) => {
+    playSfx('click');
+    if (option.impact) {
+      if (option.impact.trust) {
+        const affectedNpc = npcType === 'founder' ? 'founder' : (npcType === 'designer' ? 'designer' : 'manager');
+        updateTrust(affectedNpc, option.impact.trust);
+      }
+      if (option.impact.flag && player) {
+        updatePlayer({
+          worldState: {
+            ...player.worldState,
+            narrativeFlags: [...player.worldState.narrativeFlags, option.impact.flag]
+          }
+        });
+      }
     }
+    onChoice(option);
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass-card rounded-2xl p-6 max-w-2xl mx-auto"
+      className="glass-card rounded-[2rem] p-8 max-w-2xl mx-auto border-border shadow-2xl relative overflow-hidden"
     >
+      {/* Decorative Glow */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-30" />
+
       {/* NPC Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-6 mb-8">
         <CharacterAvatar
           isNpc
           npcType={npcType}
           expression={expression}
-          gesture={gesture}
+          gesture="idle"
           size="lg"
-          showGlow={dialogueIndex === 0}
+          showGlow
         />
         <div className="flex-1">
-          <motion.h3 
-            className="font-semibold text-lg"
+          <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            key={npcName}
+            className="space-y-1"
           >
-            {npcName}
-          </motion.h3>
-          <p className="text-sm text-muted-foreground">{npcRole}</p>
+            <h3 className="font-black italic uppercase tracking-tight text-xl">{npcName}</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-primary/80">{npcRole}</p>
+          </motion.div>
         </div>
-        
-        {/* Expression badge */}
+      </div>
+
+      {/* Dialogue Text Area */}
+      <div className="min-h-[120px] mb-8 relative">
         <motion.div
-          key={expression}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize"
+          key={node.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-xl font-medium leading-relaxed text-foreground/90 italic"
         >
-          {expression}
+          “{displayedText}”
+          {isTyping && (
+            <motion.span
+              animate={{ opacity: [1, 0] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+              className="inline-block w-1.5 h-6 bg-primary ml-1 align-middle"
+            />
+          )}
         </motion.div>
       </div>
 
-      {/* Dialogue Text */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={dialogueIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="dialogue-bubble relative"
-        >
-          <p className="text-lg leading-relaxed min-h-[4rem]">
-            {displayedText}
-            {isTyping && (
-              <motion.span
-                animate={{ opacity: [1, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity }}
-                className="inline-block w-0.5 h-5 bg-primary ml-0.5 align-middle"
-              />
-            )}
-          </p>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Progress and Continue */}
-      <div className="flex items-center justify-between mt-6">
-        <div className="flex gap-1.5">
-          {Array.from({ length: totalDialogues }).map((_, i) => (
-            <motion.div
-              key={i}
-              initial={false}
-              animate={{
-                scale: i === dialogueIndex ? 1.2 : 1,
-                backgroundColor: i <= dialogueIndex ? 'hsl(var(--primary))' : 'hsl(var(--muted))',
-              }}
-              className="w-2.5 h-2.5 rounded-full"
-            />
-          ))}
-        </div>
-
-        <motion.button
-          onClick={handleClick}
-          className={cn(
-            'px-6 py-2.5 rounded-xl font-semibold transition-all',
-            'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground',
-            'hover:shadow-lg hover:shadow-primary/25 hover:scale-105',
-            'flex items-center gap-2'
-          )}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {isTyping ? (
-            'Skip'
-          ) : isLastDialogue ? (
-            <>
-              Start Task
-              <motion.span
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 0.8, repeat: Infinity }}
+      {/* Options or Continue (MODULE 9) */}
+      <div className="space-y-3">
+        {node.options && !isTyping ? (
+          <div className="grid gap-3 animate-fade-up">
+            {node.options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleOptionClick(option)}
+                className="w-full p-4 rounded-2xl bg-muted/30 border border-border/50 hover:border-primary/50 hover:bg-primary/5 text-left text-sm font-bold uppercase tracking-wide transition-all group flex items-center justify-between"
               >
-                →
-              </motion.span>
-            </>
-          ) : (
-            <>
-              Continue
-              <motion.span
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 0.8, repeat: Infinity }}
-              >
-                →
-              </motion.span>
-            </>
-          )}
-        </motion.button>
+                <span>{option.text}</span>
+                <div className="w-6 h-6 rounded-full bg-muted/50 group-hover:bg-primary flex items-center justify-center transition-all">
+                  <span className="text-[10px] text-white">→</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <button
+              onClick={() => isTyping ? setDisplayedText(node.text) : onContinue()}
+              className={cn(
+                "px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-3",
+                isTyping
+                  ? "bg-muted text-muted-foreground border border-border/50"
+                  : "bg-primary text-primary-foreground shadow-lg shadow-primary/25 hover:scale-105 active:scale-95"
+              )}
+            >
+              {isTyping ? 'Skip' : (isLast ? 'Begin Task' : 'Continue')}
+              {!isTyping && <span className="text-lg">→</span>}
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );

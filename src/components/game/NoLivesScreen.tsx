@@ -5,24 +5,23 @@ import { Heart, Clock, Crown, Sparkles } from 'lucide-react';
 import { useAudio } from '@/hooks/useAudio';
 
 export const NoLivesScreen: React.FC = () => {
-  const { player, setScreen, getTimeUntilNextLife, checkLivesRegen } = useGameStore();
+  const { player, setScreen, checkStaminaRegen } = useGameStore();
   const { playSfx } = useAudio();
-  const [timeLeft, setTimeLeft] = useState(getTimeUntilNextLife());
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      checkLivesRegen();
-      const newTime = getTimeUntilNextLife();
-      setTimeLeft(newTime);
-      
-      if (player && player.lives > 0) {
+      checkStaminaRegen();
+      // Logic to calc time until stamina full or playable amount
+      // Simplified: just check if playable
+      if (player && (player.isPremium || player.stamina >= 10)) {
         playSfx('success');
         setScreen('office-hub');
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [checkLivesRegen, getTimeUntilNextLife, player, setScreen, playSfx]);
+  }, [checkStaminaRegen, player, setScreen, playSfx]);
 
   const formatTime = (ms: number) => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
@@ -43,23 +42,23 @@ export const NoLivesScreen: React.FC = () => {
         {/* Hearts Display */}
         <div className="flex justify-center gap-3 mb-8">
           {[...Array(3)].map((_, i) => (
-            <Heart
+            <Zap
               key={i}
               className="w-12 h-12 text-muted-foreground/20"
             />
           ))}
         </div>
 
-        <h1 className="text-4xl font-bold mb-4">Out of Lives!</h1>
+        <h1 className="text-4xl font-bold mb-4">Energy Depleted</h1>
         <p className="text-muted-foreground mb-8 leading-relaxed">
-          You've used all your attempts for today. Lives regenerate over time, or you can unlock unlimited attempts with Premium.
+          You've exhausted your tactical energy for now. Stamina regenerates over time (10 min per point), or you can use tokens to continue.
         </p>
 
         {/* Timer */}
         <div className="glass-card rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Clock className="w-5 h-5 text-primary" />
-            <span className="text-sm text-muted-foreground">Next life in</span>
+            <span className="text-sm text-muted-foreground">Next recharge in</span>
           </div>
           <div className="text-4xl font-mono font-bold text-gradient-gold">
             {formatTime(timeLeft)}
@@ -72,13 +71,42 @@ export const NoLivesScreen: React.FC = () => {
             variant="glow"
             size="xl"
             className="w-full"
+            disabled={player.tokens < 1}
+            onClick={() => {
+              playSfx('click');
+              useGameStore.getState().retryLevel();
+            }}
+          >
+            <Coins className="w-5 h-5" />
+            Use 1 Token to Recharge
+          </Button>
+
+          <Button
+            variant="glass"
+            size="lg"
+            className="w-full border-primary/20 hover:bg-primary/5"
+            onClick={() => {
+              playSfx('click');
+              // MODULE 7: Free earn path
+              useGameStore.getState().earnRetryToken();
+              setScreen('office-hub');
+            }}
+          >
+            <Zap className="w-5 h-5 text-primary" />
+            Take 60s Micro-Lesson (+1 Token)
+          </Button>
+
+          <Button
+            variant="premium"
+            size="xl"
+            className="w-full"
             onClick={() => {
               playSfx('click');
               setScreen('premium');
             }}
           >
             <Crown className="w-5 h-5" />
-            Unlock Premium
+            Unlimited Energy (Premium)
           </Button>
 
           <Button

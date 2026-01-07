@@ -1,68 +1,137 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useGameStore } from '@/store/gameStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useGameStore, ENERGY_COST_PER_TASK } from '@/store/gameStore';
 import { OFFICE_ROOMS, GAME_LEVELS, OFFICE_HUB_IMAGE } from '@/data/levels';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Briefcase, 
-  FileText, 
-  Settings, 
+import {
+  Briefcase,
+  FileText,
+  Settings,
   Trophy,
   ChevronRight,
-  Lock,
-  Star,
   Zap,
-  Heart,
+  Star,
   Crown,
   Volume2,
   VolumeX,
   Award,
   Flame,
-  HelpCircle
+  HelpCircle,
+  TrendingUp,
+  ShieldCheck,
+  Users2,
+  Calendar,
+  Coins,
+  Activity,
+  Clock,
+  Heart,
+  LogOut,
+  ArrowDownRight,
+  LineChart as LineChartIcon,
+  Star as StarIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/hooks/useAudio';
 import { OfficeCharacters } from './OfficeCharacters';
 import { PlayerAvatarDisplay } from './PlayerAvatarDisplay';
 import { ThemeToggle } from './ThemeToggle';
+import { AIAssistant } from './AIAssistant';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { toast } from 'sonner';
+
+const parseTimeToMinutes = (timeStr: string) => {
+  const [time, period] = timeStr.split(' ');
+  let [hours, mins] = time.split(':').map(Number);
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + mins;
+};
 
 export const OfficeHub: React.FC = () => {
-  const { 
-    player, 
-    setScreen, 
-    setCurrentRoom, 
-    checkLivesRegen, 
-    canPlay, 
+  const {
+    player,
+    setScreen,
+    setCurrentRoom,
+    checkStaminaRegen,
     isLevelUnlocked,
-    setShowDailyChallenges,
-    setShowTutorial
+    toggleMusic,
+    resetGame,
+    gameTime,
+    growthData,
+    isClockedIn,
+    isResting,
+    clockIn,
+    clockOut,
+    sleep
   } = useGameStore();
-  const { isMusicPlaying, toggleMusic, playSfx } = useAudio();
+  const { isMusicPlaying, playSfx } = useAudio();
   const [activeCharacter, setActiveCharacter] = useState<string | undefined>();
 
-  useEffect(() => {
-    checkLivesRegen();
-  }, [checkLivesRegen]);
+  const isLateNight = isResting && parseTimeToMinutes(gameTime) >= 22 * 60; // After 10 PM
+  const isMorning = isResting && parseTimeToMinutes(gameTime) < 9 * 60; // Before 9 AM
+
+  const [timeLeft, setTimeLeft] = useState<{ lives: string | null; energy: string | null }>({ lives: null, energy: null });
 
   useEffect(() => {
-    checkLivesRegen();
-  }, [checkLivesRegen]);
+    const timer = setInterval(() => {
+      if (!player) return;
+
+      const now = new Date().getTime();
+      let livesStr = null;
+      let energyStr = null;
+
+      // Life Timer
+      if (player.lives < 3 && player.lastLifeLostAt) {
+        const lastLost = new Date(player.lastLifeLostAt).getTime();
+        const diff = Math.max(0, (5 * 60 * 1000) - (now - lastLost));
+        if (diff > 0) {
+          const mins = Math.floor(diff / 60000);
+          const secs = Math.floor((diff % 60000) / 1000);
+          livesStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+      }
+
+      // Energy Timer (5 seconds for 25% regen)
+      if (player.stats.energy < 100) {
+        const lastRegen = player.lastStaminaRegenAt ? new Date(player.lastStaminaRegenAt).getTime() : 0;
+        const diff = Math.max(0, (5 * 1000) - (now - lastRegen));
+        if (diff > 0) {
+          const secs = Math.floor((diff % 60000) / 1000);
+          energyStr = `${secs}s`;
+        }
+      }
+
+      setTimeLeft({ lives: livesStr, energy: energyStr });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [player]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      checkStaminaRegen();
+    }, 30000); // Check every 30s
+    return () => clearInterval(timer);
+  }, [checkStaminaRegen]);
 
   if (!player) return null;
 
   const completedCount = player.completedLevels.length;
   const totalLevels = GAME_LEVELS.length;
-  const progressPercent = (completedCount / totalLevels) * 100;
 
-  const xpToNextLevel = ((player.level) * 500) - player.xp;
-  const currentLevelXp = player.xp - ((player.level - 1) * 500);
-  const levelProgress = (currentLevelXp / 500) * 100;
+  const xpToNextLevel = (player.level * 1000) - player.xp;
+  const currentLevelXp = player.xp - ((player.level - 1) * 1000);
+  const levelProgress = (currentLevelXp / 1000) * 100;
 
   const handleRoomClick = (roomId: string) => {
-    if (!canPlay()) {
+    if (!isClockedIn || isResting) {
+      toast.error(isLateNight ? "The office is closed! Go get some rest." : "You must Clock In before starting your shift!");
+      return;
+    }
+    if (player.stats.energy < ENERGY_COST_PER_TASK && !player.isPremium) {
       playSfx('failure');
-      setScreen('no-lives');
+      toast.error("You're too exhausted! Rest or wait for energy to refill.");
       return;
     }
     playSfx('transition');
@@ -71,369 +140,354 @@ export const OfficeHub: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Image */}
-      <motion.div 
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-        style={{ backgroundImage: `url(${OFFICE_HUB_IMAGE})` }}
-        initial={{ opacity: 0, scale: 1.1 }}
-        animate={{ opacity: 0.3, scale: 1 }}
-        transition={{ duration: 1.5 }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/85 to-background" />
+    <div className="min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-500">
+      {/* Background System */}
+      <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px]" />
+      
+      {/* World Particles & Atmosphere */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(234,179,8,0.02)_0%,transparent_100%)] pointer-events-none" />
 
-      {/* Animated Office Characters in background */}
-      <OfficeCharacters 
-        activeCharacter={activeCharacter}
-        onCharacterClick={(id) => {
-          setActiveCharacter(id);
-          playSfx('click');
-        }}
-      />
-
-      {/* Content */}
-      <div className="relative z-10 p-6 md:p-8">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-8">
-          <PlayerAvatarDisplay 
-            size="md" 
-            expression="happy" 
-            gesture="idle"
-            showStats={false}
-            showName={true}
-          />
-
-          <div className="flex items-center gap-3">
-            {/* Lives */}
+      {/* Clock In Overlay if not clocked in */}
+      <AnimatePresence>
+        {(!isClockedIn || isLateNight) && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] bg-background/90 backdrop-blur-2xl flex items-center justify-center p-6"
+          >
             <motion.div 
-              className="flex items-center gap-1 glass-card rounded-xl px-3 py-2"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="glass-card rounded-[3rem] p-12 text-center max-w-lg border-primary/20 bg-card shadow-2xl"
             >
-              {[...Array(player.maxLives)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={i < player.lives ? {
-                    scale: [1, 1.2, 1],
-                  } : {}}
-                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-8">
+                {isLateNight ? <Star className="w-12 h-12 text-primary animate-pulse" /> : <Clock className="w-12 h-12 text-primary" />}
+              </div>
+              
+              <h2 className="text-3xl font-black italic uppercase mb-4">
+                {isLateNight ? "Shift Complete" : "Morning Protocol"}
+              </h2>
+              
+              <p className="text-muted-foreground font-medium mb-10 leading-relaxed italic">
+                {isLateNight 
+                  ? "The office is closed for the night. Rest up, regain your energy, and we'll see you at 09:00 AM sharp." 
+                  : "Ready to push the metrics? Your shift starts now. Clock in to access the department modules and begin your missions."}
+              </p>
+
+              {isLateNight ? (
+                <Button 
+                  variant="glow" 
+                  size="xl" 
+                  className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
+                  onClick={() => {
+                    sleep();
+                    playSfx('success');
+                  }}
                 >
-                  <Heart
-                    className={cn(
-                      'w-4 h-4 transition-all',
-                      i < player.lives
-                        ? 'text-red-500 fill-red-500'
-                        : 'text-muted-foreground/30'
-                    )}
-                  />
-                </motion.div>
-              ))}
+                  SLEEP UNTIL MORNING
+                  <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
+                </Button>
+              ) : (
+                <Button 
+                  variant="glow" 
+                  size="xl" 
+                  className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
+                  onClick={() => {
+                    clockIn();
+                    playSfx('success');
+                  }}
+                >
+                  CLOCK IN :: 09:00 AM
+                  <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
+                </Button>
+              )}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            {/* Streak indicator */}
-            {player.streakData && player.streakData.currentStreak > 0 && (
-              <motion.button
-                onClick={() => {
-                  playSfx('click');
-                  setShowDailyChallenges(true);
-                }}
-                className="flex items-center gap-1.5 glass-card rounded-xl px-3 py-2 hover:bg-white/5 transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 0.5, repeat: Infinity }}
-                >
-                  <Flame className="w-4 h-4 text-orange-500" />
-                </motion.div>
-                <span className="text-sm font-bold">{player.streakData.currentStreak}</span>
-              </motion.button>
-            )}
+      {/* Main UI Layer */}
+      <div className="relative z-10 p-6 md:p-8 max-w-[1600px] mx-auto space-y-8">
 
+        {/* TOP COMMAND BAR */}
+        <header className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 bg-card/80 backdrop-blur-md px-6 py-3 rounded-[2rem] border border-border shadow-xl shadow-primary/5">
+            <PlayerAvatarDisplay
+              size="sm"
+              expression="happy"
+              gesture="idle"
+              showStats={false}
+              showName={false}
+            />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Day {player.worldState.currentDay} • {player.role}</span>
+              </div>
+              <h1 className="text-xl font-black italic tracking-tight uppercase flex items-center gap-2">
+                {player.name}
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-8 py-4 rounded-full border border-white/10 shadow-2xl">
+            {/* WORLD TIME */}
+            <div className="flex items-center gap-4 pr-8 border-r border-white/10">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-amber-500" />
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-xl font-black italic text-amber-500 leading-none">{gameTime || "09:00 AM"}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Office Hours</span>
+                </div>
+            </div>
+
+            {/* LIVES */}
+            <div className="flex items-center gap-4 px-8 border-r border-white/10">
+                <div className="flex items-center gap-1.5">
+                    {[...Array(3)].map((_, i) => (
+                        <Heart 
+                            key={i} 
+                            className={cn("w-5 h-5", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-white/10")} 
+                        />
+                    ))}
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none">Status</span>
+                    {timeLeft.lives && (
+                      <span className="text-[7px] font-bold text-destructive animate-pulse mt-1 tracking-tighter">REGEN: {timeLeft.lives}</span>
+                    )}
+                </div>
+            </div>
+
+            {/* ENERGY */}
+            <div className="flex items-center gap-4 px-8 border-r border-white/10">
+                <Zap className="w-6 h-6 text-amber-500" />
+                <div className="flex flex-col">
+                    <span className="text-xl font-black italic leading-none text-white">{player.stats.energy}%</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Energy</span>
+                    {timeLeft.energy && (
+                      <span className="text-[7px] font-bold text-amber-500 animate-pulse mt-0.5 tracking-tighter">REGEN: {timeLeft.energy}</span>
+                    )}
+                </div>
+            </div>
+
+            {/* CREDITS */}
+            <div className="flex items-center gap-4 px-8 border-r border-white/10">
+                <Coins className="w-6 h-6 text-amber-500" />
+                <div className="flex flex-col">
+                    <span className="text-xl font-black italic leading-none text-white">{player.tokens}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Credits</span>
+                </div>
+            </div>
+
+            {/* CLOCK OUT */}
+            <button 
+                onClick={clockOut}
+                className="flex items-center gap-4 pl-8 group"
+            >
+                <LogOut className="w-6 h-6 text-white/40 group-hover:text-destructive transition-colors" />
+                <div className="flex flex-col text-left">
+                    <span className="text-[12px] font-black uppercase tracking-tighter leading-none text-white group-hover:text-destructive transition-colors">Clock Out</span>
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">End Shift</span>
+                </div>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
             <ThemeToggle />
-
-            {/* Daily Challenges */}
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setShowDailyChallenges(true);
-              }}
-              className="relative"
-            >
-              <Flame className="w-5 h-5" />
-            </Button>
-
-            {/* Tutorial help */}
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setShowTutorial(true);
-              }}
-            >
-              <HelpCircle className="w-5 h-5" />
-            </Button>
-
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                toggleMusic();
-                playSfx('click');
-              }}
-            >
+            <Button variant="glass" size="icon" onClick={() => { toggleMusic(); playSfx('click'); }}>
               {isMusicPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </Button>
-
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setScreen('achievements');
-              }}
-              className="relative"
-            >
-              <Award className="w-5 h-5" />
-              {player.achievements && player.achievements.length > 0 && (
-                <motion.span 
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center font-bold"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                >
-                  {player.achievements.length}
-                </motion.span>
-              )}
-            </Button>
-
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setScreen('leaderboard');
-              }}
-            >
-              <Trophy className="w-5 h-5" />
-            </Button>
-
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setScreen('portfolio');
-              }}
-            >
-              <FileText className="w-5 h-5" />
-            </Button>
-
-            <Button
-              variant="glass"
-              size="icon"
-              onClick={() => {
-                playSfx('click');
-                setScreen('settings');
-              }}
-            >
-              <Settings className="w-5 h-5" />
-            </Button>
+            <Button variant="glass" size="icon" onClick={() => setScreen('settings')}><Settings className="w-5 h-5" /></Button>
           </div>
         </header>
 
-        {/* Stats Bar */}
-        <motion.div 
-          className="glass-card rounded-2xl p-6 mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {/* Level */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <motion.div
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                >
-                  <Zap className="w-4 h-4 text-primary" />
-                </motion.div>
-                <span className="text-sm text-muted-foreground">Level</span>
-              </div>
-              <motion.div 
-                className="text-3xl font-bold"
-                key={player.level}
-                initial={{ scale: 1.5, color: 'hsl(var(--primary))' }}
-                animate={{ scale: 1, color: 'hsl(var(--foreground))' }}
-              >
-                {player.level}
-              </motion.div>
-              <div className="mt-2">
-                <Progress value={levelProgress} className="h-1.5" />
-                <p className="text-xs text-muted-foreground mt-1">{xpToNextLevel} XP to next</p>
-              </div>
-            </motion.div>
+        {/* DASHBOARD */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-            {/* XP */}
-            <motion.div whileHover={{ scale: 1.02 }}>
-              <div className="flex items-center gap-2 mb-2">
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Star className="w-4 h-4 text-primary" />
-                </motion.div>
-                <span className="text-sm text-muted-foreground">Total XP</span>
-              </div>
-              <motion.div 
-                className="text-3xl font-bold text-gradient-gold"
-                key={player.xp}
-                initial={{ scale: 1.2 }}
-                animate={{ scale: 1 }}
-              >
-                {player.xp.toLocaleString()}
-              </motion.div>
-            </motion.div>
-
-            {/* Progress */}
-            <motion.div whileHover={{ scale: 1.02 }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Completed</span>
-              </div>
-              <div className="text-3xl font-bold">{completedCount}/{totalLevels}</div>
-              <Progress value={progressPercent} className="h-1.5 mt-2" />
-            </motion.div>
-
-            {/* Portfolio */}
-            <motion.div whileHover={{ scale: 1.02 }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Briefcase className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Portfolio</span>
-              </div>
-              <div className="text-3xl font-bold">{player.portfolio.length}</div>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* Premium CTA */}
-        {!player.isPremium && (
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
+          {/* GROWTH CHART PANEL (NEW STYLE FROM IMAGE) */}
+          <motion.div
+            className="lg:col-span-8 bg-card rounded-[2.5rem] p-10 border border-border shadow-2xl shadow-primary/5 relative overflow-hidden"
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            whileHover={{ scale: 1.01 }}
-            onClick={() => {
-              playSfx('click');
-              setScreen('premium');
-            }}
-            className="w-full glass-card rounded-2xl p-4 mb-6 border-2 border-primary/30 hover:border-primary/50 transition-all group"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                <motion.div 
-                  className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center"
-                  animate={{ rotate: [0, 5, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Crown className="w-6 h-6 text-primary-foreground" />
-                </motion.div>
-                <div className="text-left">
-                  <h3 className="font-semibold">Unlock Premium</h3>
-                  <p className="text-sm text-muted-foreground">Unlimited lives, all levels, and more</p>
-                </div>
+                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-primary" />
+                 </div>
+                 <div>
+                    <h3 className="text-xl font-black italic uppercase tracking-tight">Market Trajectory</h3>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Leads vs Revenue • Real-time Sync</p>
+                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+              <div className="text-right">
+                 <span className="text-[10px] font-black uppercase text-primary">Current Impact</span>
+                 <div className="text-3xl font-black italic">₹{(player.stats.performanceKPIs.revenue || 0).toLocaleString()}</div>
+                 <div className="flex items-center gap-1 text-success font-black italic text-[10px] justify-end">
+                    <ArrowDownRight className="w-2.5 h-2.5 rotate-180" />
+                    <span>14.4%</span>
+                 </div>
+              </div>
             </div>
-          </motion.button>
-        )}
 
-        {/* Office Title */}
-        <motion.div 
-          className="mb-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="text-3xl font-bold mb-1">NovaTech Office</h2>
-          <p className="text-muted-foreground">Select a department to explore available tasks</p>
-        </motion.div>
+            <div className="h-[250px] w-full relative z-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Tooltip 
+                    contentStyle={{ 
+                        backgroundColor: 'hsl(var(--card))', 
+                        borderColor: 'hsl(var(--border))',
+                        borderRadius: '1rem',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase'
+                    }} 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="leads" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    fillOpacity={1} 
+                    fill="url(#colorLeads)" 
+                    animationDuration={1500}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#0ea5e9" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                    animationDuration={1500}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Overlay Stats */}
+            <div className="grid grid-cols-3 gap-8 mt-8 relative z-10 border-t border-border pt-8">
+               <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Total Leads</span>
+                  <div className="text-xl font-black italic">{player.stats.performanceKPIs.leads.toLocaleString()}</div>
+               </div>
+               <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Market Share</span>
+                  <div className="text-xl font-black italic">{player.stats.reputation}% GRP</div>
+               </div>
+               <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Network Rank</span>
+                  <div className="text-xl font-black italic">TOP 5%</div>
+               </div>
+            </div>
+          </motion.div>
 
-        {/* Office Rooms Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* KPI Real-time Panel */}
+          <motion.div
+            className="lg:col-span-4 bg-card rounded-[2.5rem] p-10 border border-border shadow-2xl shadow-primary/5 relative group"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <div className="flex items-center justify-between mb-10">
+              <h3 className="font-black italic text-xl tracking-tight uppercase">KPI Analytics</h3>
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            </div>
+
+            <div className="space-y-6">
+              {[
+                { label: 'ROAS', value: `${player.stats.performanceKPIs.roas.toFixed(1)}x`, color: 'text-primary' },
+                { label: 'Conv. Rate', value: `${player.stats.performanceKPIs.conversionRate.toFixed(1)}%`, color: 'text-foreground' },
+                { label: 'Total Leads', value: player.stats.performanceKPIs.leads.toLocaleString(), color: 'text-foreground' },
+                { label: 'CAC', value: `₹${player.stats.performanceKPIs.cac}`, color: 'text-destructive' },
+                { label: 'STIPEND EARNED', value: `₹${Math.floor(player.stats.performanceKPIs.stipend || 0).toLocaleString()}`, color: 'text-success' },
+              ].map((item) => (
+                <div key={item.label} className="flex justify-between items-end border-b border-border pb-3">
+                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{item.label}</span>
+                  <span className={cn("text-2xl font-black italic tracking-tighter", item.color)}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 p-4 rounded-2xl bg-muted/30 border border-border/50 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+               Target Stipend Pool: ₹10,000
+            </div>
+
+            <button 
+                className="w-full mt-6 text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-14 shadow-lg shadow-primary/20 transition-all"
+                onClick={() => setScreen('simulation')}
+            >
+              Analyze Simulation
+            </button>
+          </motion.div>
+        </div>
+
+        {/* DEPARTMENT GRID */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {OFFICE_ROOMS.map((room, index) => {
             const roomLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
             const completedInRoom = roomLevels.filter(l => player.completedLevels.includes(l.id)).length;
-            const nextUnlockedLevel = roomLevels.find(l => isLevelUnlocked(l.id) && !player.completedLevels.includes(l.id));
+            const isUnlocked = index === 0 || completedInRoom > 0 || roomLevels.some(l => isLevelUnlocked(l.id));
 
             return (
               <motion.button
                 key={room.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                onClick={() => handleRoomClick(room.id)}
-                className="room-card text-left group relative overflow-hidden"
-              >
-                {/* Room Image Background */}
-                {room.image && (
-                  <motion.div 
-                    className="absolute inset-0 bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"
-                    style={{ backgroundImage: `url(${room.image})` }}
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.3 }}
-                  />
+                transition={{ delay: 0.5 + index * 0.1 }}
+                whileHover={isUnlocked ? { y: -8, scale: 1.01 } : {}}
+                onClick={() => isUnlocked && handleRoomClick(room.id)}
+                className={cn(
+                  "room-card text-left p-10 rounded-[3rem] border-2 transition-all duration-500 relative overflow-hidden group shadow-xl",
+                  isUnlocked
+                    ? "bg-card border-border hover:border-primary shadow-primary/5"
+                    : "bg-muted/50 border-transparent opacity-60 grayscale cursor-not-allowed"
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-card/90 to-card/40" />
+              >
+                {!isUnlocked && (
+                  <div className="absolute top-6 right-6 p-2 rounded-xl bg-background/50 backdrop-blur-md">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                )}
 
                 <div className="relative z-10">
-                  <div className="flex items-start justify-between mb-4">
-                    <motion.div 
-                      className="text-4xl"
-                      animate={{ 
-                        y: [0, -5, 0],
-                        rotate: [0, -5, 5, 0]
-                      }}
-                      transition={{ duration: 3, repeat: Infinity, delay: index * 0.5 }}
-                    >
-                      {room.icon}
-                    </motion.div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold mb-1">{room.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{room.description}</p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {completedInRoom}/{roomLevels.length} completed
-                      </span>
+                  <div className="flex justify-between items-start mb-8">
+                    <div className="w-16 h-16 rounded-3xl bg-muted/50 flex items-center justify-center text-4xl shadow-inner group-hover:scale-110 transition-transform duration-500 border border-border">
+                        {room.icon}
                     </div>
-                    {nextUnlockedLevel && (
-                      <motion.div 
-                        className="flex items-center gap-1 text-xs text-primary"
-                        animate={{ opacity: [0.5, 1, 0.5] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        <Zap className="w-3 h-3" />
-                        Ready
-                      </motion.div>
-                    )}
+                    {isUnlocked && <ChevronRight className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-all" />}
                   </div>
 
-                  <Progress 
-                    value={(completedInRoom / roomLevels.length) * 100} 
-                    className="h-1 mt-3" 
-                  />
+                  <h3 className="text-2xl font-black uppercase italic mb-3 tracking-tighter leading-none">{room.name}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-8 font-bold uppercase tracking-tight opacity-60">
+                    {room.description}
+                  </p>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                      <span>Sync Progress</span>
+                      <span className="text-primary">{Math.round((completedInRoom / (roomLevels.length || 1)) * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
+                        <motion.div 
+                            className="h-full bg-primary shadow-[0_0_10px_rgba(234,179,8,0.3)]"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(completedInRoom / (roomLevels.length || 1)) * 100}%` }}
+                        />
+                    </div>
+                  </div>
                 </div>
               </motion.button>
             );

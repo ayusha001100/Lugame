@@ -3,56 +3,61 @@ import { useGameStore } from '@/store/gameStore';
 import { GAME_LEVELS } from '@/data/levels';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { 
+import {
   CheckCircle2,
   XCircle,
   RotateCcw,
   ArrowRight,
   Trophy,
   Star,
-  Heart
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  Target,
+  Sparkles,
+  Zap,
+  ChevronRight,
+  ShieldAlert,
+  MessageSquare,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/hooks/useAudio';
 import { CelebrationEffects, XPBurstEffect } from './CelebrationEffects';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const EvaluationScreen: React.FC = () => {
-  const { 
+  const {
     player,
-    currentLevelId, 
-    lastEvaluation, 
-    setScreen, 
+    currentLevelId,
+    lastEvaluation,
+    setScreen,
     setCurrentLevel,
     resetAttempt,
-    canPlay,
-    syncToLeaderboard
+    retryLevel,
+    currentAttempt,
+    nextPhase,
+    activePhaseIndex
   } = useGameStore();
 
   const { playSfx } = useAudio();
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
-  
+
   const [showCelebration, setShowCelebration] = useState(false);
   const [showXPBurst, setShowXPBurst] = useState(false);
 
-  // Trigger celebration effects on mount if passed and sync to leaderboard
   useEffect(() => {
     if (lastEvaluation?.passed) {
       setShowCelebration(true);
       setTimeout(() => setShowXPBurst(true), 800);
-      // Sync score to leaderboard
-      syncToLeaderboard();
     }
-  }, [lastEvaluation?.passed, syncToLeaderboard]);
+  }, [lastEvaluation?.passed]);
 
   if (!lastEvaluation || !level || !player) return null;
 
   const handleRetry = () => {
     playSfx('click');
-    if (!canPlay() && !player.isPremium) {
-      setScreen('no-lives');
-      return;
-    }
-    setScreen('level');
+    retryLevel();
   };
 
   const handleContinue = () => {
@@ -62,8 +67,16 @@ export const EvaluationScreen: React.FC = () => {
     setScreen('room');
   };
 
-  const handleNextLevel = () => {
+  const handleNextAction = () => {
     playSfx('transition');
+    
+    // Check if we are in a multi-phase level and need to go to the next phase
+    if (lastEvaluation?.passed && level.phases && activePhaseIndex < level.phases.length - 1) {
+        nextPhase();
+        setScreen('level');
+        return;
+    }
+
     const nextLevel = GAME_LEVELS.find(l => l.id > level.id);
     if (nextLevel) {
       resetAttempt();
@@ -74,188 +87,202 @@ export const EvaluationScreen: React.FC = () => {
     }
   };
 
+  const getManagerMoodIcon = (mood?: string) => {
+    switch (mood) {
+      case 'happy': return '😎';
+      case 'angry': return '🤬';
+      case 'disappointed': return '😤';
+      case 'surprised': return '😲';
+      default: return '🤨';
+    }
+  };
+
   return (
-    <div className="min-h-screen p-6 md:p-8 flex items-center justify-center relative">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 py-12 px-6 md:px-12 flex items-center justify-center overflow-x-hidden">
       {/* Celebration Effects */}
       <CelebrationEffects isActive={showCelebration} intensity="high" />
-      
-      <div className="w-full max-w-2xl animate-scale-in relative z-10">
-        {/* Result Header */}
-        <div className="text-center mb-8">
+
+      <div className="w-full max-w-6xl grid lg:grid-cols-12 gap-8 items-start relative z-10">
+
+        {/* MANAGER REVIEW SECTION (NEW FEATURE) */}
+        <motion.div
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="lg:col-span-4 space-y-6"
+        >
           <div className={cn(
-            'w-28 h-28 rounded-full mx-auto mb-6 flex items-center justify-center relative',
-            lastEvaluation.passed 
-              ? 'bg-success/20' 
-              : 'bg-destructive/20'
+            "glass-card rounded-[3rem] p-8 border-2 relative overflow-hidden",
+            lastEvaluation.managerMood === 'angry' ? "border-destructive/50 bg-destructive/10" : (lastEvaluation.passed ? "border-primary/30 bg-primary/5" : "border-amber-500/30 bg-amber-500/5")
           )}>
-            {lastEvaluation.passed ? (
-              <CheckCircle2 className="w-14 h-14 text-success" />
-            ) : (
-              <XCircle className="w-14 h-14 text-destructive" />
-            )}
-            {lastEvaluation.passed && (
-              <div className="absolute inset-0 rounded-full bg-success/20 animate-ping" style={{ animationDuration: '2s' }} />
-            )}
-          </div>
-
-          <h1 className="text-4xl font-bold mb-2">
-            {lastEvaluation.passed ? 'Excellent Work!' : 'Almost There!'}
-          </h1>
-          <p className="text-muted-foreground">
-            {lastEvaluation.passed 
-              ? "You've successfully completed this challenge." 
-              : 'Review the feedback below and try again.'}
-          </p>
-
-          {/* Lives indicator for failed attempt */}
-          {!lastEvaluation.passed && !player.isPremium && (
-            <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
-              <span>Lives remaining:</span>
-              <div className="flex gap-1">
-                {[...Array(player.maxLives)].map((_, i) => (
-                  <Heart
-                    key={i}
-                    className={cn(
-                      'w-4 h-4',
-                      i < player.lives
-                        ? 'text-red-500 fill-red-500'
-                        : 'text-muted-foreground/30'
-                    )}
-                  />
-                ))}
+            <div className="text-center space-y-6 relative z-10">
+              <div className="relative inline-block">
+                <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center text-6xl shadow-2xl border-4 border-background">
+                  {getManagerMoodIcon(lastEvaluation.managerMood)}
+                </div>
+                <div className={cn(
+                  "absolute -bottom-2 -right-2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg",
+                  lastEvaluation.managerMood === 'angry' ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
+                )}>
+                  {lastEvaluation.managerMood || 'Reviewing'}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* Score Display */}
-        <div className="glass-card rounded-2xl p-8 mb-6">
-          <div className="flex items-center justify-center gap-8 mb-8">
-            <div className="text-center">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Director's Verdict</h3>
+                <h2 className="text-xl font-black italic uppercase tracking-tight">Vikram Singh</h2>
+              </div>
+
               <div className="relative">
-                <svg className="w-36 h-36 -rotate-90">
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="64"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="64"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${(lastEvaluation.score / 100) * 402} 402`}
-                    strokeLinecap="round"
-                    className={cn(
-                      'transition-all duration-1000',
-                      lastEvaluation.passed ? 'text-success' : 'text-primary'
-                    )}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl font-bold">{lastEvaluation.score}</span>
-                </div>
+                <MessageSquare className="absolute -top-4 -left-4 w-8 h-8 opacity-10 rotate-12" />
+                <p className={cn(
+                  "text-lg font-bold italic leading-tight",
+                  lastEvaluation.managerMood === 'angry' ? "text-destructive" : "text-foreground"
+                )}>
+                  "{lastEvaluation.managerMessage || lastEvaluation.feedback}"
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground mt-2">Overall Score</p>
-            </div>
 
-            {lastEvaluation.passed && (
-              <div className="text-center animate-fade-up relative">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-gold flex items-center justify-center mb-2 shadow-lg animate-pulse-glow">
-                  <Star className="w-12 h-12 text-primary-foreground" />
+              {!lastEvaluation.passed && (
+                <div className="pt-6 border-t border-border/50">
+                   <div className="flex items-center gap-2 text-amber-500 mb-3 justify-center">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Crucial Hints</span>
+                   </div>
+                   <div className="space-y-2">
+                     {lastEvaluation.suggestedKeywords?.map(kw => (
+                       <span key={kw} className="inline-block px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-500 mr-2 mb-2">
+                         #{kw}
+                       </span>
+                     ))}
+                   </div>
                 </div>
-                <p className="text-2xl font-bold text-gradient-gold">+{level.xpReward} XP</p>
-                
-                {/* XP Burst Effect */}
-                <XPBurstEffect xp={level.xpReward} isActive={showXPBurst} />
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* MAIN STATUS & FEEDBACK */}
+        <div className="lg:col-span-8 space-y-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={cn(
+              "glass-card rounded-[3rem] p-10 relative overflow-hidden",
+              lastEvaluation.passed ? "border-primary/20 bg-primary/5" : "border-destructive/20 bg-destructive/5"
+            )}
+          >
+            <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+              <div className="relative">
+                <div className={cn(
+                  "w-32 h-32 rounded-full flex items-center justify-center border-4 border-border/50 shadow-2xl",
+                  lastEvaluation.passed ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground"
+                )}>
+                  <span className="text-5xl font-black italic">{lastEvaluation.score}</span>
+                </div>
               </div>
+
+              <div className="flex-1 space-y-2 text-center md:text-left">
+                <div className="flex items-center gap-3 justify-center md:justify-start">
+                  {lastEvaluation.passed ? (
+                    <CheckCircle2 className="w-5 h-5 text-primary" />
+                  ) : (
+                    <ShieldAlert className="w-5 h-5 text-destructive" />
+                  )}
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Technical Assessment</span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none">
+                  {lastEvaluation.passed ? "Performance Standard Met" : "Standard Not Met"}
+                </h1>
+                <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">
+                  {lastEvaluation.feedback}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* FEEDBACK CLOUD */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="glass-card rounded-[2.5rem] p-8 bg-muted/30 border-border/50"
+            >
+              <div className="flex items-center gap-2 mb-6 text-primary">
+                <Star className="w-4 h-4" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest">Strengths Identified</h3>
+              </div>
+              <ul className="space-y-4">
+                {(lastEvaluation.strengths || []).map((s, i) => (
+                  <li key={i} className="flex gap-3 text-sm font-bold text-foreground/80 italic">
+                    <span className="text-primary tracking-tighter">0{i + 1}</span>
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="glass-card rounded-[2.5rem] p-8 bg-muted/30 border-border/50"
+            >
+              <div className="flex items-center gap-2 mb-6 text-destructive">
+                <Activity className="w-4 h-4" />
+                <h3 className="text-[10px] font-black uppercase tracking-widest">Required Adjustments</h3>
+              </div>
+              <ul className="space-y-4">
+                {(lastEvaluation.fixes || []).map((f, i) => (
+                  <li key={i} className="flex gap-3 text-sm font-bold text-muted-foreground italic">
+                    <div className="w-1.5 h-1.5 rounded-full bg-destructive/40 mt-1.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+
+          {/* ACTIONS */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {lastEvaluation.passed ? (
+              <>
+                <Button
+                  variant="glow"
+                  size="xl"
+                  onClick={handleNextAction}
+                  className="w-full h-20 rounded-[2rem] shadow-2xl group text-xl font-black italic"
+                >
+                  {level.phases ? "NEXT PHASE" : "NEXT MISSION"}
+                  <ArrowRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
+                </Button>
+                <Button variant="glass" onClick={handleContinue} className="w-full rounded-2xl h-20 font-black uppercase tracking-widest text-[10px]">
+                  Return to HQ
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="glow"
+                  size="xl"
+                  onClick={handleRetry}
+                  className="w-full h-20 rounded-[2rem] shadow-2xl group text-xl font-black italic bg-destructive hover:bg-destructive/90 shadow-destructive/20"
+                >
+                  RETRY SYNC
+                  <RotateCcw className="w-6 h-6 ml-4 group-hover:rotate-180 transition-transform duration-500" />
+                </Button>
+                <div className="p-6 glass-card rounded-2xl border-border/50 bg-muted/30 space-y-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em]">Strategic Intel</p>
+                  </div>
+                  <p className="text-[11px] font-bold italic text-foreground/80 leading-tight">
+                    {lastEvaluation.improvement}
+                  </p>
+                </div>
+              </>
             )}
           </div>
-
-          {/* Criteria Breakdown */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Evaluation Breakdown
-            </h3>
-            {lastEvaluation.criteriaScores.map((criteria, index) => (
-              <div key={index} className="space-y-2 animate-fade-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{criteria.name}</span>
-                  <span className={cn(
-                    'font-bold',
-                    criteria.score >= 70 ? 'text-success' : criteria.score >= 50 ? 'text-primary' : 'text-destructive'
-                  )}>
-                    {criteria.score}/100
-                  </span>
-                </div>
-                <Progress value={criteria.score} className="h-2" />
-                <p className="text-xs text-muted-foreground">{criteria.feedback}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Feedback */}
-        <div className="glass-card rounded-2xl p-6 mb-6">
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
-            <span className="text-xl">💬</span>
-            Mentor Feedback
-          </h3>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            {lastEvaluation.feedback}
-          </p>
-          
-          <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-            <h4 className="text-sm font-semibold text-primary mb-1 flex items-center gap-2">
-              <span>💡</span>
-              Pro Tip
-            </h4>
-            <p className="text-sm text-muted-foreground">{lastEvaluation.improvement}</p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-4 justify-center">
-          {!lastEvaluation.passed && lastEvaluation.canRetry && (
-            <Button
-              variant="glass"
-              size="lg"
-              onClick={handleRetry}
-              className="flex-1 max-w-[200px]"
-              disabled={!canPlay() && !player.isPremium}
-            >
-              <RotateCcw className="w-4 h-4" />
-              Try Again ({lastEvaluation.attemptsLeft} left)
-            </Button>
-          )}
-          
-          {lastEvaluation.passed ? (
-            <Button
-              variant="glow"
-              size="xl"
-              onClick={handleNextLevel}
-              className="flex-1 max-w-[280px]"
-            >
-              <Trophy className="w-5 h-5" />
-              Next Challenge
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={handleContinue}
-              className="flex-1 max-w-[200px]"
-            >
-              Back to Room
-            </Button>
-          )}
         </div>
       </div>
     </div>

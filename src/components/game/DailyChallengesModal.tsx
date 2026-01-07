@@ -27,7 +27,9 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { player, dailyData, streakData, claimStreakBonus, addXP } = useGameStore();
+  const { player, claimStreakBonus, addXP } = useGameStore();
+  const dailyData = player?.dailyData;
+  const streakData = player?.streakData;
   const [challenges, setChallenges] = useState<DailyChallenge[]>([]);
   const [showStreakClaim, setShowStreakClaim] = useState(false);
 
@@ -47,7 +49,7 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
 
   const checkChallengeComplete = (challenge: DailyChallenge): boolean => {
     if (completedIds.includes(challenge.id)) return true;
-    
+
     switch (challenge.requirement.type) {
       case 'complete_level':
         return (dailyData?.levelsCompletedToday?.length || 0) >= challenge.requirement.value;
