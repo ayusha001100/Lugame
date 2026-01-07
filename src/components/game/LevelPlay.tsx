@@ -62,7 +62,7 @@ export const LevelPlay: React.FC = () => {
       "Data-Driven Logic: Look for the specific performance target mentioned in the initial briefing panel.",
       "Risk Mitigation: Evaluate the long-term impact of this decision on the overall acquisition funnel."
     ];
-    
+
     // Combine and ensure exactly 5 detailed points
     const combined = [...baseHints];
     while (combined.length < 5) {
@@ -125,7 +125,7 @@ export const LevelPlay: React.FC = () => {
 
     try {
       const currentPhase = level.phases ? level.phases[activePhaseIndex] : null;
-      
+
       const evaluationData = await evaluateSubmission(submission, {
         levelId: level.id,
         criteria: level.rubric.criteria,
@@ -143,26 +143,23 @@ export const LevelPlay: React.FC = () => {
       };
 
       setEvaluation(evaluation as any);
-      
-      if (level.phases && activePhaseIndex < level.phases.length - 1) {
-          setPhaseSubmissions(prev => ({ ...prev, [level.phases![activePhaseIndex].id]: submission }));
-          
-          completePhase(level.id, level.phases[activePhaseIndex].id, {
-            id: level.phases[activePhaseIndex].id,
-            score: evaluation.score,
-            passed: evaluation.passed,
-            feedback: evaluation.feedback,
-            managerMood: evaluation.managerMood as any,
-            managerMessage: evaluation.managerMessage || ""
-          });
 
-          setScreen('evaluation');
-          return;
+      if (level.phases && activePhaseIndex < level.phases.length - 1) {
+        setPhaseSubmissions(prev => ({ ...prev, [level.phases![activePhaseIndex].id]: submission }));
+
+        completePhase(level.id, level.phases[activePhaseIndex].id, {
+          ...evaluation,
+          managerMood: evaluation.managerMood as any,
+          managerMessage: evaluation.managerMessage || ""
+        });
+
+        setScreen('evaluation');
+        return;
       }
 
-      const finalSubmission = level.phases 
-          ? { ...phaseSubmissions, [level.phases[activePhaseIndex].id]: submission }
-          : submission;
+      const finalSubmission = level.phases
+        ? { ...phaseSubmissions, [level.phases[activePhaseIndex].id]: submission }
+        : submission;
 
       if (evaluation.passed) {
         playSfx('success');
@@ -213,9 +210,9 @@ export const LevelPlay: React.FC = () => {
                 {player.stats.trust[getNpcType(level.room) as 'manager']}%
               </div>
             </div>
-            
+
             <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 className="h-full bg-primary shadow-[0_0_15px_rgba(234,179,8,0.4)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${player.stats.trust[getNpcType(level.room) as 'manager']}%` }}
@@ -250,7 +247,7 @@ export const LevelPlay: React.FC = () => {
 
           <div className="space-y-4">
             {hints.map((hint, i) => (
-              <motion.div 
+              <motion.div
                 key={i}
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -272,49 +269,49 @@ export const LevelPlay: React.FC = () => {
         </div>
       </div>
 
-      <header className="p-6 md:p-8 flex items-center justify-between border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="flex items-center gap-6">
+      <header className="p-4 md:p-6 lg:p-8 flex items-center justify-between border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-4 md:gap-6 min-w-0">
           <Button
             variant="glass"
             size="icon"
             onClick={() => setScreen('room')}
-            className="rounded-2xl"
+            className="rounded-2xl shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex flex-col">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Mission Protocol</h2>
-            <h1 className="text-xl font-black italic tracking-tight">{level.title}</h1>
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-primary truncate">Mission Protocol</h2>
+            <h1 className="text-lg md:text-xl font-black italic tracking-tight truncate">{level.title}</h1>
             {level.phases && (
-                <div className="flex gap-1 mt-1">
-                    {level.phases.map((_, i) => (
-                        <div key={i} className={cn("h-1 w-8 rounded-full", i <= activePhaseIndex ? "bg-primary" : "bg-muted")} />
-                    ))}
-                </div>
+              <div className="flex gap-1 mt-1 overflow-hidden">
+                {level.phases.map((_, i) => (
+                  <div key={i} className={cn("h-1 w-4 md:w-8 rounded-full shrink-0", i <= activePhaseIndex ? "bg-primary" : "bg-muted")} />
+                ))}
+              </div>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-6 mr-6">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0 px-2 md:px-0">
+          <div className="hidden sm:flex items-center gap-4 lg:gap-6 mr-2 lg:mr-6">
             <div className="flex flex-col items-end">
               <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Resources</span>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-bold tabular-nums">{player.stats.energy}%</span>
+                  <Zap className="w-3 md:w-3.5 h-3 md:h-3.5 text-primary" />
+                  <span className="text-[10px] md:text-xs font-bold tabular-nums">{player.stats.energy}%</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Coins className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-xs font-bold tabular-nums">{player.tokens}</span>
+                  <Coins className="w-3 md:w-3.5 h-3 md:h-3.5 text-amber-500" />
+                  <span className="text-[10px] md:text-xs font-bold tabular-nums">{player.tokens}</span>
                 </div>
-                <div className="flex items-center gap-1.5 ml-2">
-                    {[...Array(3)].map((_, i) => (
-                        <Heart 
-                            key={i} 
-                            className={cn("w-3 h-3", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-muted/30")} 
-                        />
-                    ))}
+                <div className="hidden lg:flex items-center gap-1.5 ml-2">
+                  {[...Array(3)].map((_, i) => (
+                    <Heart
+                      key={i}
+                      className={cn("w-3 h-3", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-muted/30")}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -333,7 +330,7 @@ export const LevelPlay: React.FC = () => {
           <Button
             variant="glass"
             size="sm"
-            className="rounded-xl border-border h-10 px-4"
+            className="rounded-xl border-border h-9 md:h-10 px-2 md:px-4 shrink-0"
             onClick={() => {
               if (useToken(1)) {
                 toast.success("Hint protocol activated!");
@@ -342,23 +339,23 @@ export const LevelPlay: React.FC = () => {
               }
             }}
           >
-            <HelpCircle className="w-4 h-4 mr-2" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Query Intel</span>
+            <HelpCircle className="w-4 h-4 md:mr-2" />
+            <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">Query Intel</span>
           </Button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-6 md:p-12 pb-32">
+      <main className="max-w-4xl mx-auto p-4 md:p-8 lg:p-12 pb-32">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 mb-12"
+          className="flex flex-wrap items-center gap-3 mb-8 md:mb-12"
         >
-          <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black text-primary uppercase tracking-widest">
+          <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest">
             {level.room} :: {level.difficulty}
           </div>
-          <div className="w-1.5 h-1.5 rounded-full bg-muted" />
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+          <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-muted" />
+          <div className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate max-w-full">
             {level.competencies.join(' • ')}
           </div>
         </motion.div>

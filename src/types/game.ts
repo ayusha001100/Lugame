@@ -129,17 +129,17 @@ export interface GameLevel {
 
   // Multi-Phase Quest (New Structure)
   phases?: LevelPhase[];
-  
+
   // Task Logic (Legacy - for simple levels)
   taskType?: TaskType;
-  taskData?: any; 
+  taskData?: any;
   taskPrompt?: string;
   taskHints?: string[];
 
   // Requirements & Rewards
   difficulty: 'easy' | 'medium' | 'hard';
-  competencies: string[]; 
-  rubric: EvaluationRubric; 
+  competencies: string[];
+  rubric: EvaluationRubric;
   xpReward: number;
   stipendReward?: number; // Total stipend for this level
   tokenReward?: number;
@@ -235,6 +235,7 @@ export interface EvaluationResult {
   managerMessage?: string;
   suggestedKeywords?: string[];
   phaseEvaluations?: Record<string, PhaseEvaluation>;
+  improvement?: string;
 }
 
 export interface Room {

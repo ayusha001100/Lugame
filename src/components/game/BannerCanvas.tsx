@@ -21,7 +21,15 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
-  Italic
+  Italic,
+  ArrowLeft,
+  Clock,
+  Star,
+  Heart,
+  Loader2,
+  AlertTriangle,
+  Timer,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -102,7 +110,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
   // Update active color on brush
   useEffect(() => {
     if (!fabricCanvas) return;
-    
+
     if (fabricCanvas.freeDrawingBrush) {
       fabricCanvas.freeDrawingBrush.color = activeColor;
     }
@@ -208,7 +216,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
 
   const addCTAButton = useCallback(() => {
     if (!fabricCanvas) return;
-    
+
     // Button background
     const btnBg = new Rect({
       left: width / 2 - 75,
@@ -220,7 +228,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
       ry: 25,
       shadow: new Shadow({ color: 'rgba(255,107,107,0.4)', offsetX: 0, offsetY: 8, blur: 20 }),
     });
-    
+
     // Button text
     const btnText = new IText('Get Started', {
       left: width / 2 - 50,
@@ -230,7 +238,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
       fontFamily: 'Inter, sans-serif',
       fontWeight: 'bold',
     });
-    
+
     fabricCanvas.add(btnBg);
     fabricCanvas.add(btnText);
     fabricCanvas.renderAll();
@@ -238,7 +246,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
 
   const applyGradientBackground = useCallback((colors: string[]) => {
     if (!fabricCanvas) return;
-    
+
     // Create gradient background using a rect
     const gradientRect = new Rect({
       left: 0,
@@ -248,7 +256,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
       selectable: false,
       evented: false,
     });
-    
+
     // Set gradient fill using fabric's gradient syntax
     gradientRect.set('fill', {
       type: 'linear',
@@ -258,14 +266,14 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
         { offset: 1, color: colors[1] }
       ]
     });
-    
+
     // Remove old background if exists
     const objects = fabricCanvas.getObjects();
     const oldBg = objects.find(obj => !obj.selectable && obj.type === 'rect');
     if (oldBg) {
       fabricCanvas.remove(oldBg);
     }
-    
+
     fabricCanvas.add(gradientRect);
     fabricCanvas.sendObjectToBack(gradientRect);
     fabricCanvas.renderAll();
@@ -311,13 +319,13 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
 
   const exportCanvas = useCallback(() => {
     if (!fabricCanvas) return;
-    
+
     const dataURL = fabricCanvas.toDataURL({
       format: 'png',
       quality: 1,
       multiplier: 2,
     });
-    
+
     // Collect element data for AI evaluation
     const elements: CanvasElementData[] = fabricCanvas.getObjects().map(obj => ({
       type: obj.type || 'unknown',
@@ -332,7 +340,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
         fontWeight: (obj as { fontWeight?: string }).fontWeight,
       }
     }));
-    
+
     onExport(dataURL, elements);
   }, [fabricCanvas, onExport]);
 
@@ -342,7 +350,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
   return (
     <div className="flex flex-col gap-4">
       {/* Problem Statement */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-card rounded-xl p-4 border-l-4 border-primary"
@@ -352,11 +360,11 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
       </motion.div>
 
       {/* Toolbar */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-wrap gap-2 glass-card rounded-xl p-3"
+        className="flex md:flex-wrap items-center gap-2 glass-card rounded-xl p-3 overflow-x-auto no-scrollbar scroll-smooth"
       >
         {/* Shape Tools */}
         <div className="flex gap-1 border-r border-border/50 pr-2">
@@ -395,12 +403,12 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
         </div>
 
         {/* Text Tools */}
-        <div className="flex gap-1 items-center border-r border-border/50 pr-2">
+        <div className="flex gap-1 items-center border-r border-border/50 pr-2 shrink-0">
           <Input
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder="Enter text..."
-            className="w-32 h-8 text-sm"
+            placeholder="Text..."
+            className="w-20 md:w-32 h-8 text-xs md:text-sm"
             onKeyDown={(e) => e.key === 'Enter' && addText()}
           />
           <Button variant="glass" size="icon" onClick={addText} title="Add Text">
@@ -431,7 +439,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
           >
             <Palette className="w-4 h-4" style={{ color: activeColor }} />
           </Button>
-          
+
           <AnimatePresence>
             {showColorPicker && (
               <motion.div
@@ -456,7 +464,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
                     />
                   ))}
                 </div>
-                
+
                 <div className="border-t border-border/50 pt-2">
                   <p className="text-xs text-muted-foreground mb-2">Gradient Backgrounds</p>
                   <div className="grid grid-cols-3 gap-1">
@@ -464,8 +472,8 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
                       <button
                         key={gradient.name}
                         className="h-6 rounded-md border border-border/50 hover:scale-105 transition-transform"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${gradient.colors[0]}, ${gradient.colors[1]})` 
+                        style={{
+                          background: `linear-gradient(135deg, ${gradient.colors[0]}, ${gradient.colors[1]})`
                         }}
                         onClick={() => applyGradientBackground(gradient.colors)}
                         title={gradient.name}
@@ -479,48 +487,57 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
         </div>
 
         {/* Layer Controls */}
-        <div className="flex gap-1 border-r border-border/50 pr-2">
+        <div className="flex gap-1 border-r border-border/50 pr-2 shrink-0">
           <Button variant="glass" size="icon" onClick={bringForward} title="Bring Forward" disabled={!selectedObject}>
             <Layers className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Zoom Controls */}
-        <div className="flex gap-1 border-r border-border/50 pr-2">
-          <Button variant="glass" size="icon" onClick={zoomOut}>
-            <ZoomOut className="w-4 h-4" />
+        <div className="flex gap-1 border-r border-border/50 pr-2 shrink-0">
+          <Button variant="glass" size="icon" onClick={zoomOut} className="h-8 w-8">
+            <ZoomOut className="w-3.5 h-3.5" />
           </Button>
-          <span className="text-xs flex items-center px-2">{Math.round(canvasScale * 100)}%</span>
-          <Button variant="glass" size="icon" onClick={zoomIn}>
-            <ZoomIn className="w-4 h-4" />
+          <span className="text-[10px] md:text-xs flex items-center px-1 md:px-2 font-bold">{Math.round(canvasScale * 100)}%</span>
+          <Button variant="glass" size="icon" onClick={zoomIn} className="h-8 w-8">
+            <ZoomIn className="w-3.5 h-3.5" />
           </Button>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-1 ml-auto">
+        <div className="flex gap-1 ml-auto shrink-0">
           <Button variant="glass" size="icon" onClick={deleteSelected} title="Delete Selected" disabled={!selectedObject}>
             <Trash2 className="w-4 h-4 text-red-400" />
           </Button>
           <Button variant="glass" size="icon" onClick={clearCanvas} title="Clear All">
             <RotateCcw className="w-4 h-4" />
           </Button>
-          <Button variant="glow" size="sm" onClick={exportCanvas} className="ml-2">
-            <Download className="w-4 h-4 mr-1" />
-            Submit Design
+          <Button variant="glow" size="sm" onClick={exportCanvas} className="ml-2 font-bold px-4">
+            <Download className="w-4 h-4 mr-1.5" />
+            Submit
           </Button>
         </div>
       </motion.div>
 
       {/* Canvas Container */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative overflow-hidden rounded-xl border border-border/50 shadow-2xl"
-        style={{ transform: `scale(${canvasScale})`, transformOrigin: 'top left' }}
+        className="relative overflow-auto rounded-xl border border-border/50 shadow-2xl bg-[#1a1a2e]"
       >
-        <canvas ref={canvasRef} className="block" />
-        
+        <div
+          style={{
+            transform: `scale(${canvasScale})`,
+            transformOrigin: 'top left',
+            width: width * canvasScale,
+            height: height * canvasScale
+          }}
+          className="transition-transform duration-200"
+        >
+          <canvas ref={canvasRef} className="block" />
+        </div>
+
         {/* Canvas Guidelines Overlay */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Center guides */}
@@ -530,7 +547,7 @@ export const BannerCanvas: React.FC<BannerCanvasProps> = ({
       </motion.div>
 
       {/* Tips */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}

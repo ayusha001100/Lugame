@@ -143,20 +143,20 @@ export const OfficeHub: React.FC = () => {
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-500">
       {/* Background System */}
       <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px]" />
-      
+
       {/* World Particles & Atmosphere */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(234,179,8,0.02)_0%,transparent_100%)] pointer-events-none" />
 
       {/* Clock In Overlay if not clocked in */}
       <AnimatePresence>
         {(!isClockedIn || isLateNight) && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 z-[100] bg-background/90 backdrop-blur-2xl flex items-center justify-center p-6"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="glass-card rounded-[3rem] p-12 text-center max-w-lg border-primary/20 bg-card shadow-2xl"
@@ -164,21 +164,21 @@ export const OfficeHub: React.FC = () => {
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-8">
                 {isLateNight ? <Star className="w-12 h-12 text-primary animate-pulse" /> : <Clock className="w-12 h-12 text-primary" />}
               </div>
-              
+
               <h2 className="text-3xl font-black italic uppercase mb-4">
                 {isLateNight ? "Shift Complete" : "Morning Protocol"}
               </h2>
-              
+
               <p className="text-muted-foreground font-medium mb-10 leading-relaxed italic">
-                {isLateNight 
-                  ? "The office is closed for the night. Rest up, regain your energy, and we'll see you at 09:00 AM sharp." 
+                {isLateNight
+                  ? "The office is closed for the night. Rest up, regain your energy, and we'll see you at 09:00 AM sharp."
                   : "Ready to push the metrics? Your shift starts now. Clock in to access the department modules and begin your missions."}
               </p>
 
               {isLateNight ? (
-                <Button 
-                  variant="glow" 
-                  size="xl" 
+                <Button
+                  variant="glow"
+                  size="xl"
                   className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
                   onClick={() => {
                     sleep();
@@ -189,9 +189,9 @@ export const OfficeHub: React.FC = () => {
                   <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
                 </Button>
               ) : (
-                <Button 
-                  variant="glow" 
-                  size="xl" 
+                <Button
+                  variant="glow"
+                  size="xl"
                   className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
                   onClick={() => {
                     clockIn();
@@ -211,86 +211,85 @@ export const OfficeHub: React.FC = () => {
       <div className="relative z-10 p-6 md:p-8 max-w-[1600px] mx-auto space-y-8">
 
         {/* TOP COMMAND BAR */}
-        <header className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4 bg-card/80 backdrop-blur-md px-6 py-3 rounded-[2rem] border border-border shadow-xl shadow-primary/5">
-            <PlayerAvatarDisplay
-              size="sm"
-              expression="happy"
-              gesture="idle"
-              showStats={false}
-              showName={false}
-            />
-            <div className="flex flex-col">
+        <header className="flex flex-col xl:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 bg-card/80 backdrop-blur-md px-6 py-3 rounded-[2rem] border border-border shadow-xl shadow-primary/5 w-full xl:w-auto overflow-hidden">
+            <div className="shrink-0">
+              <PlayerAvatarDisplay
+                size="sm"
+                expression="happy"
+                gesture="idle"
+                showStats={false}
+                showName={false}
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">Day {player.worldState.currentDay} • {player.role}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary truncate">Day {player.worldState.currentDay} • {player.role}</span>
               </div>
-              <h1 className="text-xl font-black italic tracking-tight uppercase flex items-center gap-2">
+              <h1 className="text-xl font-black italic tracking-tight uppercase flex items-center gap-2 truncate">
                 {player.name}
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-8 py-4 rounded-full border border-white/10 shadow-2xl">
+          <div className="flex flex-wrap items-center justify-center gap-3 bg-black/40 backdrop-blur-xl px-4 md:px-8 py-4 rounded-[2rem] md:rounded-full border border-white/10 shadow-2xl w-full xl:w-auto">
             {/* WORLD TIME */}
-            <div className="flex items-center gap-4 pr-8 border-r border-white/10">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-amber-500" />
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-xl font-black italic text-amber-500 leading-none">{gameTime || "09:00 AM"}</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Office Hours</span>
-                </div>
+            <div className="flex items-center gap-3 md:gap-4 pr-4 md:pr-8 border-r border-white/10">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 md:w-6 md:h-6 text-amber-500" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg md:text-xl font-black italic text-amber-500 leading-none">{gameTime || "09:00 AM"}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Hours</span>
+              </div>
             </div>
 
             {/* LIVES */}
-            <div className="flex items-center gap-4 px-8 border-r border-white/10">
-                <div className="flex items-center gap-1.5">
-                    {[...Array(3)].map((_, i) => (
-                        <Heart 
-                            key={i} 
-                            className={cn("w-5 h-5", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-white/10")} 
-                        />
-                    ))}
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none">Status</span>
-                    {timeLeft.lives && (
-                      <span className="text-[7px] font-bold text-destructive animate-pulse mt-1 tracking-tighter">REGEN: {timeLeft.lives}</span>
-                    )}
-                </div>
+            <div className="flex items-center gap-3 md:gap-4 px-4 md:px-8 border-r border-white/10">
+              <div className="flex items-center gap-1 md:gap-1.5">
+                {[...Array(3)].map((_, i) => (
+                  <Heart
+                    key={i}
+                    className={cn("w-4 h-4 md:w-5 md:h-5", i < (player.lives || 3) ? "fill-destructive text-destructive" : "text-white/10")}
+                  />
+                ))}
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none">Status</span>
+                {timeLeft.lives && (
+                  <span className="text-[7px] font-bold text-destructive animate-pulse mt-1 tracking-tighter uppercase">REGEN: {timeLeft.lives}</span>
+                )}
+              </div>
             </div>
 
             {/* ENERGY */}
-            <div className="flex items-center gap-4 px-8 border-r border-white/10">
-                <Zap className="w-6 h-6 text-amber-500" />
-                <div className="flex flex-col">
-                    <span className="text-xl font-black italic leading-none text-white">{player.stats.energy}%</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Energy</span>
-                    {timeLeft.energy && (
-                      <span className="text-[7px] font-bold text-amber-500 animate-pulse mt-0.5 tracking-tighter">REGEN: {timeLeft.energy}</span>
-                    )}
-                </div>
+            <div className="flex items-center gap-3 md:gap-4 px-4 md:px-8 border-r border-white/10">
+              <Zap className="w-5 h-5 md:w-6 md:h-6 text-amber-500 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-lg md:text-xl font-black italic leading-none text-white">{player.stats.energy}%</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Energy</span>
+              </div>
             </div>
 
             {/* CREDITS */}
-            <div className="flex items-center gap-4 px-8 border-r border-white/10">
-                <Coins className="w-6 h-6 text-amber-500" />
-                <div className="flex flex-col">
-                    <span className="text-xl font-black italic leading-none text-white">{player.tokens}</span>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Credits</span>
-                </div>
+            <div className="flex items-center gap-3 md:gap-4 px-4 md:px-8 border-r border-white/10">
+              <Coins className="w-5 h-5 md:w-6 md:h-6 text-amber-500 shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-lg md:text-xl font-black italic leading-none text-white">{player.tokens}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Credits</span>
+              </div>
             </div>
 
             {/* CLOCK OUT */}
-            <button 
-                onClick={clockOut}
-                className="flex items-center gap-4 pl-8 group"
+            <button
+              onClick={clockOut}
+              className="flex items-center gap-3 md:gap-4 pl-4 md:pl-8 group"
             >
-                <LogOut className="w-6 h-6 text-white/40 group-hover:text-destructive transition-colors" />
-                <div className="flex flex-col text-left">
-                    <span className="text-[12px] font-black uppercase tracking-tighter leading-none text-white group-hover:text-destructive transition-colors">Clock Out</span>
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">End Shift</span>
-                </div>
+              <LogOut className="w-5 h-5 md:w-6 md:h-6 text-white/40 group-hover:text-destructive transition-colors shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] md:text-[12px] font-black uppercase tracking-tighter leading-none text-white group-hover:text-destructive transition-colors">Clock Out</span>
+                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest hidden sm:inline">End Shift</span>
+              </div>
             </button>
           </div>
 
@@ -308,126 +307,126 @@ export const OfficeHub: React.FC = () => {
 
           {/* GROWTH CHART PANEL (NEW STYLE FROM IMAGE) */}
           <motion.div
-            className="lg:col-span-8 bg-card rounded-[2.5rem] p-10 border border-border shadow-2xl shadow-primary/5 relative overflow-hidden"
+            className="lg:col-span-8 bg-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border border-border shadow-2xl shadow-primary/5 relative overflow-hidden"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="flex items-center justify-between mb-8 relative z-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-primary" />
-                 </div>
-                 <div>
-                    <h3 className="text-xl font-black italic uppercase tracking-tight">Market Trajectory</h3>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Leads vs Revenue • Real-time Sync</p>
-                 </div>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-black italic uppercase tracking-tight">Market Trajectory</h3>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest truncate">Leads vs Revenue</p>
+                </div>
               </div>
-              <div className="text-right">
-                 <span className="text-[10px] font-black uppercase text-primary">Current Impact</span>
-                 <div className="text-3xl font-black italic">₹{(player.stats.performanceKPIs.revenue || 0).toLocaleString()}</div>
-                 <div className="flex items-center gap-1 text-success font-black italic text-[10px] justify-end">
-                    <ArrowDownRight className="w-2.5 h-2.5 rotate-180" />
-                    <span>14.4%</span>
-                 </div>
+              <div className="text-left sm:text-right w-full sm:w-auto">
+                <span className="text-[10px] font-black uppercase text-primary">Current Impact</span>
+                <div className="text-2xl md:text-3xl font-black italic">₹{(player.stats.performanceKPIs.revenue || 0).toLocaleString()}</div>
+                <div className="flex items-center gap-1 text-success font-black italic text-[10px] justify-start sm:justify-end">
+                  <ArrowDownRight className="w-2.5 h-2.5 rotate-180" />
+                  <span>14.4%</span>
+                </div>
               </div>
             </div>
 
-            <div className="h-[250px] w-full relative z-10">
+            <div className="h-[200px] md:h-[250px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <Tooltip 
-                    contentStyle={{ 
-                        backgroundColor: 'hsl(var(--card))', 
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: '1rem',
-                        fontSize: '10px',
-                        fontWeight: 900,
-                        textTransform: 'uppercase'
-                    }} 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      borderColor: 'hsl(var(--border))',
+                      borderRadius: '1rem',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      textTransform: 'uppercase'
+                    }}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="leads" 
-                    stroke="#10b981" 
+                  <Area
+                    type="monotone"
+                    dataKey="leads"
+                    stroke="#10b981"
                     strokeWidth={2}
                     strokeDasharray="5 5"
-                    fillOpacity={1} 
-                    fill="url(#colorLeads)" 
+                    fillOpacity={1}
+                    fill="url(#colorLeads)"
                     animationDuration={1500}
                   />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="#0ea5e9" 
-                    strokeWidth={4} 
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)" 
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#0ea5e9"
+                    strokeWidth={4}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
                     animationDuration={1500}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            
+
             {/* Overlay Stats */}
-            <div className="grid grid-cols-3 gap-8 mt-8 relative z-10 border-t border-border pt-8">
-               <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Total Leads</span>
-                  <div className="text-xl font-black italic">{player.stats.performanceKPIs.leads.toLocaleString()}</div>
-               </div>
-               <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Market Share</span>
-                  <div className="text-xl font-black italic">{player.stats.reputation}% GRP</div>
-               </div>
-               <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Network Rank</span>
-                  <div className="text-xl font-black italic">TOP 5%</div>
-               </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-8 mt-8 relative z-10 border-t border-border pt-8">
+              <div className="space-y-1">
+                <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Total Leads</span>
+                <div className="text-lg md:text-xl font-black italic">{player.stats.performanceKPIs.leads.toLocaleString()}</div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Market Share</span>
+                <div className="text-lg md:text-xl font-black italic">{player.stats.reputation}% GRP</div>
+              </div>
+              <div className="space-y-1 sm:col-span-1 col-span-2">
+                <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Network Rank</span>
+                <div className="text-lg md:text-xl font-black italic">TOP 5%</div>
+              </div>
             </div>
           </motion.div>
 
           {/* KPI Real-time Panel */}
           <motion.div
-            className="lg:col-span-4 bg-card rounded-[2.5rem] p-10 border border-border shadow-2xl shadow-primary/5 relative group"
+            className="lg:col-span-4 bg-card rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border border-border shadow-2xl shadow-primary/5 relative group"
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center justify-between mb-8 md:mb-10">
               <h3 className="font-black italic text-xl tracking-tight uppercase">KPI Analytics</h3>
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               {[
                 { label: 'ROAS', value: `${player.stats.performanceKPIs.roas.toFixed(1)}x`, color: 'text-primary' },
                 { label: 'Conv. Rate', value: `${player.stats.performanceKPIs.conversionRate.toFixed(1)}%`, color: 'text-foreground' },
                 { label: 'Total Leads', value: player.stats.performanceKPIs.leads.toLocaleString(), color: 'text-foreground' },
                 { label: 'CAC', value: `₹${player.stats.performanceKPIs.cac}`, color: 'text-destructive' },
-                { label: 'STIPEND EARNED', value: `₹${Math.floor(player.stats.performanceKPIs.stipend || 0).toLocaleString()}`, color: 'text-success' },
+                { label: 'STIPEND', value: `₹${Math.floor(player.stats.performanceKPIs.stipend || 0).toLocaleString()}`, color: 'text-success' },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-end border-b border-border pb-3">
                   <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{item.label}</span>
-                  <span className={cn("text-2xl font-black italic tracking-tighter", item.color)}>{item.value}</span>
+                  <span className={cn("text-xl md:text-2xl font-black italic tracking-tighter", item.color)}>{item.value}</span>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 p-4 rounded-2xl bg-muted/30 border border-border/50 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-               Target Stipend Pool: ₹10,000
+            <div className="mt-6 md:mt-8 p-4 rounded-2xl bg-muted/30 border border-border/50 text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+              Target Stipend Pool: ₹10,000
             </div>
 
-            <button 
-                className="w-full mt-6 text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-14 shadow-lg shadow-primary/20 transition-all"
-                onClick={() => setScreen('simulation')}
+            <button
+              className="w-full mt-6 text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-14 shadow-lg shadow-primary/20 transition-all font-bold"
+              onClick={() => setScreen('simulation')}
             >
               Analyze Simulation
             </button>
@@ -450,42 +449,42 @@ export const OfficeHub: React.FC = () => {
                 whileHover={isUnlocked ? { y: -8, scale: 1.01 } : {}}
                 onClick={() => isUnlocked && handleRoomClick(room.id)}
                 className={cn(
-                  "room-card text-left p-10 rounded-[3rem] border-2 transition-all duration-500 relative overflow-hidden group shadow-xl",
+                  "room-card text-left p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border-2 transition-all duration-500 relative overflow-hidden group shadow-xl",
                   isUnlocked
                     ? "bg-card border-border hover:border-primary shadow-primary/5"
                     : "bg-muted/50 border-transparent opacity-60 grayscale cursor-not-allowed"
                 )}
               >
                 {!isUnlocked && (
-                  <div className="absolute top-6 right-6 p-2 rounded-xl bg-background/50 backdrop-blur-md">
+                  <div className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-xl bg-background/50 backdrop-blur-md">
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                   </div>
                 )}
 
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-8">
-                    <div className="w-16 h-16 rounded-3xl bg-muted/50 flex items-center justify-center text-4xl shadow-inner group-hover:scale-110 transition-transform duration-500 border border-border">
-                        {room.icon}
+                  <div className="flex justify-between items-start mb-6 md:mb-8">
+                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-muted/50 flex items-center justify-center text-3xl md:text-4xl shadow-inner group-hover:scale-110 transition-transform duration-500 border border-border">
+                      {room.icon}
                     </div>
-                    {isUnlocked && <ChevronRight className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-all" />}
+                    {isUnlocked && <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground group-hover:text-primary transition-all" />}
                   </div>
 
-                  <h3 className="text-2xl font-black uppercase italic mb-3 tracking-tighter leading-none">{room.name}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-8 font-bold uppercase tracking-tight opacity-60">
+                  <h3 className="text-xl md:text-2xl font-black uppercase italic mb-2 md:mb-3 tracking-tighter leading-none">{room.name}</h3>
+                  <p className="text-[10px] md:text-xs text-muted-foreground line-clamp-2 mb-6 md:mb-8 font-bold uppercase tracking-tight opacity-60">
                     {room.description}
                   </p>
 
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <div className="space-y-3 md:space-y-4">
+                    <div className="flex justify-between items-end text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                       <span>Sync Progress</span>
                       <span className="text-primary">{Math.round((completedInRoom / (roomLevels.length || 1)) * 100)}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
-                        <motion.div 
-                            className="h-full bg-primary shadow-[0_0_10px_rgba(234,179,8,0.3)]"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(completedInRoom / (roomLevels.length || 1)) * 100}%` }}
-                        />
+                      <motion.div
+                        className="h-full bg-primary shadow-[0_0_10px_rgba(234,179,8,0.3)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(completedInRoom / (roomLevels.length || 1)) * 100}%` }}
+                      />
                     </div>
                   </div>
                 </div>

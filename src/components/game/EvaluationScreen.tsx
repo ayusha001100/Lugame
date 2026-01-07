@@ -69,12 +69,12 @@ export const EvaluationScreen: React.FC = () => {
 
   const handleNextAction = () => {
     playSfx('transition');
-    
+
     // Check if we are in a multi-phase level and need to go to the next phase
     if (lastEvaluation?.passed && level.phases && activePhaseIndex < level.phases.length - 1) {
-        nextPhase();
-        setScreen('level');
-        return;
+      nextPhase();
+      setScreen('level');
+      return;
     }
 
     const nextLevel = GAME_LEVELS.find(l => l.id > level.id);
@@ -98,7 +98,7 @@ export const EvaluationScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 py-12 px-6 md:px-12 flex items-center justify-center overflow-x-hidden">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 py-8 md:py-12 px-4 md:px-12 flex items-center justify-center overflow-x-hidden">
       {/* Celebration Effects */}
       <CelebrationEffects isActive={showCelebration} intensity="high" />
 
@@ -114,13 +114,13 @@ export const EvaluationScreen: React.FC = () => {
             "glass-card rounded-[3rem] p-8 border-2 relative overflow-hidden",
             lastEvaluation.managerMood === 'angry' ? "border-destructive/50 bg-destructive/10" : (lastEvaluation.passed ? "border-primary/30 bg-primary/5" : "border-amber-500/30 bg-amber-500/5")
           )}>
-            <div className="text-center space-y-6 relative z-10">
+            <div className="text-center space-y-4 md:space-y-6 relative z-10">
               <div className="relative inline-block">
-                <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center text-6xl shadow-2xl border-4 border-background">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted flex items-center justify-center text-4xl md:text-6xl shadow-2xl border-4 border-background">
                   {getManagerMoodIcon(lastEvaluation.managerMood)}
                 </div>
                 <div className={cn(
-                  "absolute -bottom-2 -right-2 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg",
+                  "absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 px-2 md:px-4 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-lg",
                   lastEvaluation.managerMood === 'angry' ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
                 )}>
                   {lastEvaluation.managerMood || 'Reviewing'}
@@ -128,14 +128,14 @@ export const EvaluationScreen: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Director's Verdict</h3>
-                <h2 className="text-xl font-black italic uppercase tracking-tight">Vikram Singh</h2>
+                <h3 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Director's Verdict</h3>
+                <h2 className="text-lg md:text-xl font-black italic uppercase tracking-tight">Vikram Singh</h2>
               </div>
 
               <div className="relative">
-                <MessageSquare className="absolute -top-4 -left-4 w-8 h-8 opacity-10 rotate-12" />
+                <MessageSquare className="absolute -top-3 -left-3 md:-top-4 md:-left-4 w-6 h-6 md:w-8 md:h-8 opacity-10 rotate-12" />
                 <p className={cn(
-                  "text-lg font-bold italic leading-tight",
+                  "text-base md:text-lg font-bold italic leading-tight",
                   lastEvaluation.managerMood === 'angry' ? "text-destructive" : "text-foreground"
                 )}>
                   "{lastEvaluation.managerMessage || lastEvaluation.feedback}"
@@ -144,17 +144,17 @@ export const EvaluationScreen: React.FC = () => {
 
               {!lastEvaluation.passed && (
                 <div className="pt-6 border-t border-border/50">
-                   <div className="flex items-center gap-2 text-amber-500 mb-3 justify-center">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Crucial Hints</span>
-                   </div>
-                   <div className="space-y-2">
-                     {lastEvaluation.suggestedKeywords?.map(kw => (
-                       <span key={kw} className="inline-block px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-500 mr-2 mb-2">
-                         #{kw}
-                       </span>
-                     ))}
-                   </div>
+                  <div className="flex items-center gap-2 text-amber-500 mb-3 justify-center">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Crucial Hints</span>
+                  </div>
+                  <div className="space-y-2">
+                    {lastEvaluation.suggestedKeywords?.map(kw => (
+                      <span key={kw} className="inline-block px-3 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-500 mr-2 mb-2">
+                        #{kw}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -171,13 +171,13 @@ export const EvaluationScreen: React.FC = () => {
               lastEvaluation.passed ? "border-primary/20 bg-primary/5" : "border-destructive/20 bg-destructive/5"
             )}
           >
-            <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10">
               <div className="relative">
                 <div className={cn(
-                  "w-32 h-32 rounded-full flex items-center justify-center border-4 border-border/50 shadow-2xl",
+                  "w-24 h-24 md:w-32 md:h-32 rounded-full flex items-center justify-center border-4 border-border/50 shadow-2xl",
                   lastEvaluation.passed ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground"
                 )}>
-                  <span className="text-5xl font-black italic">{lastEvaluation.score}</span>
+                  <span className="text-4xl md:text-5xl font-black italic">{lastEvaluation.score}</span>
                 </div>
               </div>
 
@@ -190,8 +190,8 @@ export const EvaluationScreen: React.FC = () => {
                   )}
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Technical Assessment</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase leading-none">
-                  {lastEvaluation.passed ? "Performance Standard Met" : "Standard Not Met"}
+                <h1 className="text-2xl md:text-4xl font-black italic tracking-tighter uppercase leading-none">
+                  {lastEvaluation.passed ? "Standard Met" : "Standard Not Met"}
                 </h1>
                 <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">
                   {lastEvaluation.feedback}
@@ -251,12 +251,12 @@ export const EvaluationScreen: React.FC = () => {
                   variant="glow"
                   size="xl"
                   onClick={handleNextAction}
-                  className="w-full h-20 rounded-[2rem] shadow-2xl group text-xl font-black italic"
+                  className="w-full h-16 md:h-20 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl group text-lg md:text-xl font-black italic"
                 >
                   {level.phases ? "NEXT PHASE" : "NEXT MISSION"}
-                  <ArrowRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
+                  <ArrowRight className="w-5 h-5 md:w-6 md:h-6 ml-3 md:ml-4 group-hover:translate-x-2 transition-transform" />
                 </Button>
-                <Button variant="glass" onClick={handleContinue} className="w-full rounded-2xl h-20 font-black uppercase tracking-widest text-[10px]">
+                <Button variant="glass" onClick={handleContinue} className="w-full rounded-2xl h-16 md:h-20 font-black uppercase tracking-widest text-[9px] md:text-[10px]">
                   Return to HQ
                 </Button>
               </>

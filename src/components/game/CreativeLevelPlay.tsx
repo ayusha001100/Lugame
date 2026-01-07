@@ -9,7 +9,8 @@ import {
   Heart,
   Loader2,
   AlertTriangle,
-  Timer
+  Timer,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAudio } from '@/hooks/useAudio';
@@ -196,6 +197,7 @@ export const CreativeLevelPlay: React.FC = () => {
 
     try {
       const data = await evaluateCreativeSubmission(elements, {
+        levelId: level.id,
         criteria: level.rubric.criteria,
         passingScore: level.rubric.passingScore,
         levelTitle: level.title,
@@ -261,22 +263,30 @@ export const CreativeLevelPlay: React.FC = () => {
   return (
     <div className="min-h-screen p-4 md:p-6">
       {/* Header */}
-      <header className="flex items-center justify-between mb-4">
-        <Button
-          variant="glass"
-          size="icon"
-          onClick={() => {
-            playSfx('click');
-            setScreen('room');
-          }}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+      <header className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+          <Button
+            variant="glass"
+            size="icon"
+            onClick={() => {
+              playSfx('click');
+              setScreen('room');
+            }}
+            className="shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
 
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-primary" />
+            <span className="text-primary font-bold text-sm tracking-widest uppercase">{level.xpReward} XP Reward</span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto bg-card/50 backdrop-blur-md p-3 rounded-2xl border border-border/50">
           {/* Difficulty Badge */}
           <span className={cn(
-            'px-3 py-1 rounded-full text-xs font-semibold border',
+            'px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase border tracking-widest',
             difficultyBadge[difficulty].color
           )}>
             {difficultyBadge[difficulty].label}
@@ -288,32 +298,25 @@ export const CreativeLevelPlay: React.FC = () => {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className={cn(
-                'flex items-center gap-2 glass-card rounded-lg px-4 py-2 font-mono text-lg font-bold',
+                'flex items-center gap-2 px-3 py-1 font-mono text-sm md:text-base font-black italic uppercase transition-colors',
                 getTimerColor()
               )}
             >
-              <Timer className="w-5 h-5" />
+              <Timer className="w-4 h-4" />
               {formatTime(timeLeft)}
             </motion.div>
           )}
 
+          <div className="h-4 w-px bg-border" />
+
           {/* Lives / Stamina */}
-          <div className="flex items-center gap-1 glass-card rounded-lg px-3 py-1.5">
-            <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-muted-foreground mr-1">ENERGY</span>
-              <span className={cn("text-xs font-bold", player.stamina < 20 ? "text-red-500" : "text-primary")}>{player.stamina}%</span>
-              {/* Visual bar could be added here */}
-            </div>
+          <div className="flex items-center gap-1">
+            <Zap className="w-3.5 h-3.5 text-primary" />
+            <span className={cn("text-[10px] md:text-xs font-black italic", player.stamina < 20 ? "text-red-500" : "text-primary")}>{player.stamina}%</span>
           </div>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4" />
-            <span>Attempt {currentAttempt}/{level.rubric.maxAttempts}</span>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm">
-            <Star className="w-4 h-4 text-primary" />
-            <span className="text-primary font-semibold">{level.xpReward} XP</span>
+          <div className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase text-muted-foreground italic">
+            <span className="hidden md:inline">Attempt</span> {currentAttempt}/{level.rubric.maxAttempts}
           </div>
         </div>
       </header>

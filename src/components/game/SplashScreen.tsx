@@ -121,7 +121,7 @@ export const SplashScreen: React.FC = () => {
 
         {/* Title */}
         <motion.h1
-          className="text-7xl md:text-8xl font-bold mb-4 tracking-tight"
+          className="text-5xl md:text-8xl font-black italic mb-4 tracking-tighter uppercase"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -144,12 +144,12 @@ export const SplashScreen: React.FC = () => {
 
         {/* Tagline */}
         <motion.p
-          className="text-2xl md:text-3xl text-muted-foreground mb-3 font-light"
+          className="text-lg md:text-3xl text-muted-foreground mb-3 font-black uppercase italic tracking-widest opacity-80"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          Master Digital Marketing Through Play
+          Master Digital Marketing
         </motion.p>
         <motion.p
           className="text-sm text-muted-foreground/70 mb-12 max-w-lg mx-auto leading-relaxed"

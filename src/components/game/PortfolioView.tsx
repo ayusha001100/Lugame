@@ -44,40 +44,41 @@ export const PortfolioView: React.FC = () => {
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(234,179,8,0.05)_0%,transparent_50%)] pointer-events-none" />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/50 backdrop-blur-xl border-b border-border p-6 md:px-12 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <header className="sticky top-0 z-50 bg-background/50 backdrop-blur-xl border-b border-border p-4 md:p-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto">
           <Button
             variant="glass"
             size="icon"
             onClick={() => setScreen('office-hub')}
-            className="rounded-2xl"
+            className="rounded-2xl shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex flex-col">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Artifact Archives</h2>
-            <h1 className="text-xl font-black italic tracking-tight uppercase">Professional Portfolio</h1>
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-primary truncate">Artifact Archives</h2>
+            <h1 className="text-lg md:text-xl font-black italic tracking-tight uppercase truncate">Professional Portfolio</h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-muted/30 rounded-2xl p-1 border border-border/50 mr-4 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+          <div className="flex bg-muted/30 rounded-2xl p-1 border border-border/50 overflow-hidden shrink-0">
             <button
               onClick={() => setViewMode('agent')}
-              className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'agent' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              className={cn("px-3 md:px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'agent' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
             >
-              Agent View
+              Agent
             </button>
             <button
               onClick={() => setViewMode('recruiter')}
-              className={cn("px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'recruiter' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              className={cn("px-3 md:px-4 py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all", viewMode === 'recruiter' ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
             >
-              Recruiter Mode
+              Recruiter
             </button>
           </div>
-          <Button variant="glow" size="sm" className="rounded-xl h-10 px-6 font-black uppercase tracking-widest text-[10px]">
+          <Button variant="glow" size="sm" className="rounded-xl h-10 px-4 md:px-6 font-black uppercase tracking-widest text-[9px] md:text-[10px] shrink-0">
             <Download className="w-4 h-4 mr-2" />
-            Export PDF
+            <span className="hidden sm:inline">Export PDF</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
       </header>
@@ -152,8 +153,8 @@ export const PortfolioView: React.FC = () => {
                 </div>
                 <h3 className="text-sm font-black italic tracking-tight mb-2 uppercase">Certified Growth Intern</h3>
                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-6">Verified by MarketCraft Protocol</p>
-                <Button 
-                  variant="glow" 
+                <Button
+                  variant="glow"
                   className="w-full rounded-2xl h-12 text-[10px] font-black uppercase tracking-widest"
                   onClick={() => setScreen('certification')}
                 >
@@ -196,7 +197,7 @@ export const PortfolioView: React.FC = () => {
                     transition={{ delay: idx * 0.1 }}
                     className="glass-card rounded-[2.5rem] p-8 border-border group hover:border-primary/20 transition-all relative overflow-hidden"
                   >
-                    <div className="flex flex-col md:flex-row gap-8">
+                    <div className="flex flex-col xl:flex-row gap-8">
                       <div className="flex-1 space-y-6">
                         <div className="flex items-center gap-4">
                           <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[8px] font-black text-primary uppercase">
@@ -206,29 +207,29 @@ export const PortfolioView: React.FC = () => {
                         </div>
 
                         <div>
-                          <h3 className="text-2xl font-black italic tracking-tight leading-tight mb-4 group-hover:text-primary transition-colors">{artifact.title}</h3>
-                          <div className="bg-muted/30 rounded-2xl p-6 border border-border/50 relative mb-4">
-                            <p className="text-sm font-medium text-muted-foreground leading-relaxed italic whitespace-pre-wrap line-clamp-3 group-hover:line-clamp-none transition-all">
+                          <h3 className="text-xl md:text-2xl font-black italic tracking-tight leading-tight mb-4 group-hover:text-primary transition-colors">{artifact.title}</h3>
+                          <div className="bg-muted/30 rounded-2xl p-4 md:p-6 border border-border/50 relative mb-4">
+                            <p className="text-xs md:text-sm font-medium text-muted-foreground leading-relaxed italic whitespace-pre-wrap line-clamp-3 group-hover:line-clamp-none transition-all">
                               “{artifact.content}”
                             </p>
                           </div>
-                          
+
                           {/* Module 6 Feedback display in Portfolio */}
                           <div className="space-y-2 mb-6">
                             <div className="text-[8px] font-black uppercase text-primary/60">Expert Feedback</div>
-                            <p className="text-xs text-muted-foreground italic leading-relaxed">
+                            <p className="text-[10px] md:text-xs text-muted-foreground italic leading-relaxed">
                               {typeof artifact.feedback === 'string' ? artifact.feedback : artifact.feedback.feedback}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-6 md:gap-8">
                           <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Performance Score</span>
-                            <span className="text-xl font-black italic">{artifact.score}/100</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Score</span>
+                            <span className="text-lg md:text-xl font-black italic">{artifact.score}/100</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Submission State</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">State</span>
                             <span className="text-[10px] font-black uppercase text-success flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
                               Polished
@@ -237,14 +238,14 @@ export const PortfolioView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="w-full md:w-32 flex flex-col justify-between items-center gap-4 pt-4 md:pt-0">
-                        <button className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all">
+                      <div className="flex xl:flex-col justify-center xl:justify-between items-center gap-4 pt-6 xl:pt-0 border-t xl:border-t-0 xl:border-l border-border/50 min-w-[60px]">
+                        <button className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shrink-0">
                           <Eye className="w-5 h-5" />
                         </button>
-                        <button className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all">
+                        <button className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shrink-0">
                           <Share2 className="w-5 h-5" />
                         </button>
-                        <button className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all">
+                        <button className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-muted/30 flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shrink-0">
                           <Download className="w-5 h-5" />
                         </button>
                       </div>

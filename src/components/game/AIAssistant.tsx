@@ -48,7 +48,7 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      
+
       // Use a token
       useToken(1);
 
@@ -88,7 +88,7 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { 
+          generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 250
           }
@@ -115,8 +115,8 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
   return (
     <>
       {/* Floating Toggle Button */}
-      <motion.div 
-        className="fixed bottom-24 left-8 z-[100]"
+      <motion.div
+        className="fixed bottom-24 left-4 md:left-8 z-[100]"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
       >
@@ -125,11 +125,11 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
           variant="glow"
           size="icon"
           className={cn(
-            "w-14 h-14 rounded-full shadow-2xl relative transition-all duration-500",
+            "w-12 h-12 md:w-14 md:h-14 rounded-full shadow-2xl relative transition-all duration-500",
             isOpen ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-destructive/20" : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20"
           )}
         >
-          {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-6 h-6" />}
+          {isOpen ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Bot className="w-5 h-5 md:w-6 md:h-6" />}
           {!isOpen && tokensLeft > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-background shadow-lg">
               {tokensLeft}
@@ -145,7 +145,7 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
             initial={{ opacity: 0, x: -50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: -50, scale: 0.9 }}
-            className="fixed bottom-40 left-8 z-[100] w-[380px] h-[500px] glass-card rounded-[2.5rem] border-border shadow-2xl flex flex-col overflow-hidden bg-card/95 backdrop-blur-2xl transition-all duration-500"
+            className="fixed bottom-40 left-4 md:left-8 right-4 md:right-auto z-[100] md:w-[380px] h-[450px] md:h-[500px] glass-card rounded-[2rem] md:rounded-[2.5rem] border-border shadow-2xl flex flex-col overflow-hidden bg-card/95 backdrop-blur-2xl transition-all duration-500"
           >
             {/* Header */}
             <div className="p-6 border-b border-border bg-primary/5 flex items-center justify-between shadow-sm">
@@ -199,8 +199,8 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
                   >
                     <div className={cn(
                       "px-4 py-3 rounded-2xl text-xs font-medium leading-relaxed shadow-sm transition-all",
-                      m.role === 'user' 
-                        ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/10" 
+                      m.role === 'user'
+                        ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/10"
                         : "bg-muted text-foreground rounded-tl-none border border-border shadow-inner"
                     )}>
                       {m.content}
