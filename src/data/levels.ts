@@ -70,6 +70,7 @@ export const GAME_LEVELS: GameLevel[] = [
         description: " Sarah says the headline is 'good but needs more proof'. Patch it.",
         taskType: 'short-answer',
         taskPrompt: "Rewrite 'Stop Wasting 5 Hours Every Day' to include a specific ROI metric.",
+        taskData: { expectedKeywords: ["%", "$", "increase", "save", "ROI"] },
         taskHints: ["Mention $ savings or % growth", "Keep it punchy"],
         stipendReward: 800,
       }
@@ -187,8 +188,7 @@ export const GAME_LEVELS: GameLevel[] = [
     xpReward: 400,
     stipendReward: 1500,
     isPremium: false,
-    simulationImpact: { conversionRate: 1.2, leads: 80 },
-    difficulty: 'medium'
+    simulationImpact: { conversionRate: 1.2, leads: 80 }
   },
   {
     id: 4,
@@ -287,7 +287,7 @@ export const GAME_LEVELS: GameLevel[] = [
     ],
     taskType: 'rank-order',
     taskData: {
-      items: ["Meta Ads (Retargeting)", "Google Search (High Intent)", "LinkedIn (B2B)", "TikTok (Awareness)"]
+      items: ["Google Search (High Intent)", "Meta Ads (Retargeting)", "LinkedIn (B2B)", "TikTok (Awareness)"]
     },
     taskPrompt: "Rank these channels in order of highest expected ROI for a B2B SaaS product like NovaMind.",
     taskHints: ["High intent search usually wins for ROI", "Retargeting is efficient but limited", "B2B belongs on LinkedIn"],

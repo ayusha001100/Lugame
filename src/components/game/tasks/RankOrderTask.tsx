@@ -11,7 +11,15 @@ interface RankOrderTaskProps {
 }
 
 export const RankOrderTask: React.FC<RankOrderTaskProps> = ({ level, onComplete, isEvaluating }) => {
-    const [items, setItems] = useState<string[]>(level.taskData?.items || []);
+    const [items, setItems] = useState<string[]>(() => {
+        const initial = [...(level.taskData?.items || [])];
+        // Fisher-Yates shuffle
+        for (let i = initial.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [initial[i], initial[j]] = [initial[j], initial[i]];
+        }
+        return initial;
+    });
 
     return (
         <div className="p-8 md:p-12 glass-card rounded-[2.5rem] border border-white/5 space-y-8 max-w-2xl mx-auto">

@@ -131,6 +131,7 @@ export const LevelPlay: React.FC = () => {
         criteria: level.rubric.criteria,
         passingScore: level.rubric.passingScore,
         taskType: currentPhase ? currentPhase.taskType : (level.taskType as any),
+        taskData: currentPhase ? currentPhase.taskData : (level.taskData || {}),
         levelTitle: level.title,
         levelPrompt: currentPhase ? currentPhase.taskPrompt : (level.taskPrompt || ""),
         attempt: currentAttempt

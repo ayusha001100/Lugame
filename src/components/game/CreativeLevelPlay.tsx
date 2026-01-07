@@ -201,7 +201,8 @@ export const CreativeLevelPlay: React.FC = () => {
         criteria: level.rubric.criteria,
         passingScore: level.rubric.passingScore,
         levelTitle: level.title,
-        levelPrompt: level.taskPrompt
+        levelPrompt: level.taskPrompt,
+        taskData: level.taskData || {}
       });
 
       const evaluation = {

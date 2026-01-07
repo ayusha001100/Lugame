@@ -165,7 +165,7 @@ export interface DialogueNode {
   id: string;
   text: string;
   options?: DialogueOption[];
-  emotion?: 'neutral' | 'happy' | 'angry' | 'surprised';
+  emotion?: 'neutral' | 'happy' | 'angry' | 'surprised' | 'serious' | 'thinking' | 'excited';
 }
 
 export interface DialogueOption {
