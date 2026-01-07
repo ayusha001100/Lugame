@@ -70,6 +70,7 @@ export const OfficeHub: React.FC = () => {
 
   const isLateNight = isResting && parseTimeToMinutes(gameTime) >= 22 * 60; // After 10 PM
   const isMorning = isResting && parseTimeToMinutes(gameTime) < 9 * 60; // Before 9 AM
+  const isExhausted = player.stats.energy < ENERGY_COST_PER_TASK && !player.isPremium;
 
   const [timeLeft, setTimeLeft] = useState<{ lives: string | null; energy: string | null }>({ lives: null, energy: null });
 
@@ -81,10 +82,10 @@ export const OfficeHub: React.FC = () => {
       let livesStr = null;
       let energyStr = null;
 
-      // Life Timer
+      // Life Timer (Regen every 1 minute now)
       if (player.lives < 3 && player.lastLifeLostAt) {
         const lastLost = new Date(player.lastLifeLostAt).getTime();
-        const diff = Math.max(0, (5 * 60 * 1000) - (now - lastLost));
+        const diff = Math.max(0, (60 * 1000) - (now - lastLost)); // 1 min regen
         if (diff > 0) {
           const mins = Math.floor(diff / 60000);
           const secs = Math.floor((diff % 60000) / 1000);
@@ -149,7 +150,7 @@ export const OfficeHub: React.FC = () => {
 
       {/* Clock In Overlay if not clocked in */}
       <AnimatePresence>
-        {(!isClockedIn || isLateNight) && (
+        {(!isClockedIn || isLateNight || isExhausted) && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -166,42 +167,80 @@ export const OfficeHub: React.FC = () => {
               </div>
 
               <h2 className="text-3xl font-black italic uppercase mb-4">
-                {isLateNight ? "Shift Complete" : "Morning Protocol"}
+                {isLateNight ? "Shift Complete" : (isExhausted ? "Status: Exhausted" : "Morning Protocol")}
               </h2>
 
               <p className="text-muted-foreground font-medium mb-10 leading-relaxed italic">
                 {isLateNight
                   ? "The office is closed for the night. Rest up, regain your energy, and we'll see you at 09:00 AM sharp."
-                  : "Ready to push the metrics? Your shift starts now. Clock in to access the department modules and begin your missions."}
+                  : isExhausted
+                    ? "Agent, your neural energy levels are critical. You must return home and rest before the next calibration cycle."
+                    : "Ready to push the metrics? Your shift starts now. Clock in to access the department modules and begin your missions."}
               </p>
 
-              {isLateNight ? (
-                <Button
-                  variant="glow"
-                  size="xl"
-                  className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
-                  onClick={() => {
-                    sleep();
-                    playSfx('success');
-                  }}
-                >
-                  SLEEP UNTIL MORNING
-                  <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
-                </Button>
-              ) : (
-                <Button
-                  variant="glow"
-                  size="xl"
-                  className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
-                  onClick={() => {
-                    clockIn();
-                    playSfx('success');
-                  }}
-                >
-                  CLOCK IN :: 09:00 AM
-                  <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
-                </Button>
-              )}
+              <div className="flex flex-col gap-4 w-full">
+                {isLateNight ? (
+                  <Button
+                    variant="glow"
+                    size="xl"
+                    className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
+                    onClick={() => {
+                      sleep();
+                      playSfx('success');
+                    }}
+                  >
+                    SLEEP UNTIL MORNING
+                    <Star className="w-6 h-6 ml-4 group-hover:scale-125 transition-transform" />
+                  </Button>
+                ) : isExhausted ? (
+                  <div className="space-y-4 w-full">
+                    <Button
+                      variant="glow"
+                      size="xl"
+                      className="w-full rounded-[2rem] h-20 text-xl font-black italic group bg-destructive hover:bg-destructive/90 shadow-destructive/20 border-destructive/50"
+                      onClick={() => {
+                        sleep();
+                        playSfx('success');
+                      }}
+                    >
+                      GO HOME & REST
+                      <Star className="w-6 h-6 ml-4 group-hover:rotate-12 transition-transform" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground"
+                      onClick={clockOut}
+                    >
+                      Just Clock Out
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4 w-full">
+                    <Button
+                      variant="glow"
+                      size="xl"
+                      className="w-full rounded-[2rem] h-20 text-xl font-black italic group"
+                      onClick={() => {
+                        clockIn();
+                        playSfx('success');
+                      }}
+                    >
+                      CLOCK IN :: 09:00 AM
+                      <ChevronRight className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-2xl h-14 text-[10px] font-black uppercase tracking-[0.2em] opacity-60 hover:opacity-100"
+                      onClick={() => {
+                        sleep();
+                        playSfx('click');
+                      }}
+                    >
+                      Skip Day :: Sleep
+                    </Button>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -280,17 +319,32 @@ export const OfficeHub: React.FC = () => {
               </div>
             </div>
 
-            {/* CLOCK OUT */}
-            <button
-              onClick={clockOut}
-              className="flex items-center gap-3 md:gap-4 pl-4 md:pl-8 group"
-            >
-              <LogOut className="w-5 h-5 md:w-6 md:h-6 text-white/40 group-hover:text-destructive transition-colors shrink-0" />
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] md:text-[12px] font-black uppercase tracking-tighter leading-none text-white group-hover:text-destructive transition-colors">Clock Out</span>
-                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest hidden sm:inline">End Shift</span>
-              </div>
-            </button>
+            {/* CLOCK OUT / SLEEP */}
+            <div className="flex items-center">
+              {isClockedIn ? (
+                <button
+                  onClick={clockOut}
+                  className="flex items-center gap-3 md:gap-4 pl-4 md:pl-8 group"
+                >
+                  <LogOut className="w-5 h-5 md:w-6 md:h-6 text-white/40 group-hover:text-destructive transition-colors shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] md:text-[12px] font-black uppercase tracking-tighter leading-none text-white group-hover:text-destructive transition-colors">Clock Out</span>
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest hidden sm:inline">End Shift</span>
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={() => { sleep(); playSfx('success'); }}
+                  className="flex items-center gap-3 md:gap-4 pl-4 md:pl-8 group"
+                >
+                  <Star className="w-5 h-5 md:w-6 md:h-6 text-amber-500 group-hover:text-amber-400 transition-colors shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-[10px] md:text-[12px] font-black uppercase tracking-tighter leading-none text-amber-500 group-hover:text-amber-400 transition-colors">Go Home</span>
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest hidden sm:inline">Sleep</span>
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

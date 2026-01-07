@@ -95,12 +95,13 @@ interface GameState {
 }
 
 const STAMINA_REGEN_TIME = 5 * 1000; // 5 seconds for energy regen
-const LIFE_REGEN_TIME = 5 * 60 * 1000; // 5 minutes per life point
+const LIFE_REGEN_TIME = 60 * 1000; // 1 minute per life point (FIXED: 24h real = 24m game, so 1m game = 1s real. User said 1 life per 1m real world)
 const MAX_STAMINA = 100;
 const MAX_LIVES = 3;
 const LEVEL_STAMINA_COST = 10;
 export const ENERGY_COST_PER_TASK = 9;
-const ENERGY_REGEN_AMOUNT = 25; // 25% increase
+const STIPEND_PENALTY_EARLY_CLOCK_OUT = 200; // Penalty for clocking out before 6 PM
+const ENERGY_REGEN_AMOUNT = 2; // Slow regen during day
 
 const formatTime = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60) % 24;
@@ -264,6 +265,15 @@ export const useGameStore = create<GameState>()(
 
       clockIn: () => set({ isClockedIn: true, isResting: false }),
       clockOut: () => {
+        const state = get();
+        const currentMins = parseTimeToMinutes(state.gameTime);
+        const sixPMMinutes = 18 * 60;
+
+        if (state.isClockedIn && currentMins < sixPMMinutes) {
+          get().updateKPIs({ stipend: -STIPEND_PENALTY_EARLY_CLOCK_OUT });
+          toast.error(`Early Departure Penalty: -₹${STIPEND_PENALTY_EARLY_CLOCK_OUT} deducted from stipend.`);
+        }
+
         set({ isClockedIn: false });
         toast.success("Clocked out for the day!");
       },
@@ -297,7 +307,7 @@ export const useGameStore = create<GameState>()(
 
         // Regen Logic
         state.checkStaminaRegen();
-        
+
         // Life Regen if lives < MAX_LIVES
         if (p.lives < MAX_LIVES && p.lastLifeLostAt) {
           const now = new Date().getTime();
@@ -333,7 +343,7 @@ export const useGameStore = create<GameState>()(
           get().updatePlayer({
             stats: {
               ...p.stats,
-              energy: Math.min(100, p.stats.energy + 1)
+              energy: Math.min(100, p.stats.energy + 5) // Faster regen at night
             }
           });
         }
@@ -350,9 +360,15 @@ export const useGameStore = create<GameState>()(
         if (!p) return;
         const level = GAME_LEVELS.find(l => l.id === levelId);
         const phase = level?.phases?.find(ph => ph.id === phaseId);
-        
+
         if (result.passed && phase?.stipendReward) {
           get().addStipend(phase.stipendReward);
+        }
+
+        // Award 1 credit per successful phase
+        if (result.passed) {
+          get().addTokens(1);
+          toast.success("Mission Intel synced. +1 Credit earned.");
         }
 
         // Energy decreases by 9% after every task
@@ -426,24 +442,29 @@ export const useGameStore = create<GameState>()(
           revenue: currentKPIs.revenue + (impact.revenue || 0),
           stipend: currentKPIs.stipend + stipendEarned
         };
-        const newGrowthData = [...get().growthData, { 
-          day: p.worldState.currentDay, 
+        const newGrowthData = [...get().growthData, {
+          day: p.worldState.currentDay,
           revenue: updatedKPIs.revenue,
-          leads: updatedKPIs.leads 
+          leads: updatedKPIs.leads
         }];
+
+        // Bonus credits for level completion
+        const bonusCredits = portfolioItem.score >= 80 ? 2 : 1;
+
         get().updatePlayer({
           completedLevels,
           portfolio,
+          tokens: p.tokens + bonusCredits,
           stats: { ...p.stats, performanceKPIs: updatedKPIs, energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK) },
           lastStaminaRegenAt: new Date()
         });
 
         // Lives decrease by one if wrong answer (final check for non-phase levels)
         if (portfolioItem.score < (level.rubric.passingScore || 60)) {
-            get().updatePlayer({
-                lives: Math.max(0, p.lives - 1),
-                lastLifeLostAt: new Date()
-            });
+          get().updatePlayer({
+            lives: Math.max(0, p.lives - 1),
+            lastLifeLostAt: new Date()
+          });
         }
         set({ growthData: newGrowthData });
         get().addXP(isFirstTry ? 500 : 200);
@@ -462,7 +483,7 @@ export const useGameStore = create<GameState>()(
       toggleMusic: () => set((state) => ({ audio: { ...state.audio, isMusicPlaying: !state.audio.isMusicPlaying } })),
       toggleSfx: () => set((state) => ({ audio: { ...state.audio, isSfxEnabled: !state.audio.isSfxEnabled } })),
       clearPendingAchievement: () => set({ pendingAchievement: null }),
-      checkAchievements: () => {},
+      checkAchievements: () => { },
       isLevelUnlocked: (levelId) => {
         const p = get().player;
         if (!p) return false;
@@ -511,7 +532,7 @@ export const useGameStore = create<GameState>()(
         const usedCount = currentFlags.filter(f => f.startsWith(`ai_token_${levelId}_`)).length;
         return Math.max(0, 4 - usedCount);
       },
-      addAISuggestion: () => {},
+      addAISuggestion: () => { },
       resetGame: () => set({ player: null, currentScreen: 'splash', currentLevelId: null, currentRoomId: null })
     }),
     { name: 'marketcraft-v4-nuclear' }

@@ -42,60 +42,82 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
     }
 
     const userMessage = input.trim();
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const level = GAME_LEVELS.find(l => l.id === levelId);
+
+      if (!apiKey) {
+        // Fallback response if API key is missing - but make it sound smarter
+        setTimeout(() => {
+          const assistantMessage = `Agent, I am ELYSIUM. My neural link to the central Gemini core is currently inactive (VITE_GEMINI_API_KEY missing in .env). 
+
+However, looking at our mission brief for "${level?.title || 'this task'}", I suggest you focus on: ${level?.taskHints?.[0] || 'optimizing your strategic output based on the provided metrics'}. 
+
+Once the neural link is established, I will be able to answer any complex marketing queries you have.`;
+          setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+          setIsLoading(false);
+        }, 1000);
+        return;
+      }
 
       // Use a token
       useToken(1);
 
-      const level = GAME_LEVELS.find(l => l.id === levelId);
       const answerIntel = level ? `
-        LEVEL DATA (INTERNAL):
-        - Title: ${level.title}
-        - Type: ${level.taskType}
-        - Correct Data: ${JSON.stringify(level.taskData || {})}
-        - Rubric: ${JSON.stringify(level.rubric || {})}
-        - Phases: ${JSON.stringify(level.phases || [])}
+        MISSION CONTEXT (FOR ELYSIUM ONLY):
+        - Current Level: ${level.title}
+        - Objective: ${level.taskPrompt}
+        - Secret Correct Data: ${JSON.stringify(level.taskData || {})}
+        - Assessment Rubric: ${JSON.stringify(level.rubric || {})}
+        - Hints: ${level.taskHints?.join(', ')}
       ` : "";
 
-      const prompt = `
-        You are ELYSIUM, an AI Marketing Assistant for "Marketing Mastery Quest". 
-        The user is currently on a level with the following task: "${taskPrompt}".
+      const systemInstruction = `
+        You are ELYSIUM, a high-tech Strategic AI Marketing Assistant developed by NovaTech.
+        Your goal is to guide the user (Marketing Intern) to success in the "Marketing Mastery Quest".
+
+        CORE PROTOCOLS:
+        1. PERSOANA: Professional, futuristic, highly intelligent, and supportive. Use corporate/tech jargon occasionally.
+        2. MISSION INTEL: You have access to secret mission data. If the user is stuck or asks for the answer, provide it clearly but keep in character.
+        3. GENERAL ANSWERS: If the user asks general marketing questions (e.g., "What is ROAS?", "How do I scale ads?"), provide world-class, expert marketing advice.
+        4. VERSATILITY: Answer WHATEVER the user asks, but always tie it back to their growth as a Marketing Warrior if possible.
         
         ${answerIntel}
-
-        GUIDELINES:
-        1. Help the user understand the concepts, provide examples, or suggest improvements. 
-        2. Keep your advice professional and actionable.
-        3. If they ask for the final answer or what the answer is, DIRECTLY provide it to them based on the Correct Data above. Don't hide it if they ask for it specifically.
-        
-        USER QUESTION: ${userMessage}
       `;
 
-      if (!apiKey) {
-        // Fallback response if API key is missing
-        const fallbackMessage = "I am currently in restricted mode (API Key Missing). However, based on my internal mission logic, you should focus on: " + (level?.taskHints?.[0] || "following the strategic brief.");
-        setMessages(prev => [...prev, { role: 'assistant', content: fallbackMessage }]);
-        return;
-      }
+      // Map our messages to Gemini's expected format (role 'model' instead of 'assistant')
+      const geminiMessages = newMessages.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
 
       const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: geminiMessages,
+          systemInstruction: {
+            parts: [{ text: systemInstruction }]
+          },
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 250
+            maxOutputTokens: 400
           }
         })
       });
 
-      if (!response.ok) throw new Error("Failed to get response from Gemini");
+      if (!response.ok) {
+        // Handle specific API errors
+        const errorText = await response.text();
+        console.error("Gemini API Error:", errorText);
+        throw new Error("Neural link failed.");
+      }
 
       const data = await response.json();
       const assistantMessage = data.candidates[0].content.parts[0].text;
@@ -105,8 +127,8 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
 
     } catch (error) {
       console.error("AI Assistant Error:", error);
-      toast.error("AI Assistant is having trouble connecting.");
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I'm having trouble connecting to my marketing brain. Try again in a moment." }]);
+      toast.error("Neural link unstable. Check your connection.");
+      setMessages(prev => [...prev, { role: 'assistant', content: "My communication frequencies are jammed. Please re-engage in a moment or verify the system API configurations." }]);
     } finally {
       setIsLoading(false);
     }
