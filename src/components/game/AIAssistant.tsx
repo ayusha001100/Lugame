@@ -53,17 +53,29 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
       const level = GAME_LEVELS.find(l => l.id === levelId);
 
       if (!apiKey) {
-        // Fallback response if API key is missing - but make it sound smarter
-        setTimeout(() => {
-          const assistantMessage = `Agent, I am ELYSIUM. My neural link to the central Gemini core is currently inactive (VITE_GEMINI_API_KEY missing in .env). 
+        // Use Pollinations AI as a free, no-key-needed model for "Live" usage
+        try {
+          // Prepare the system-aware prompt for Pollinations
+          const systemContext = `You are ELYSIUM, a high-tech Strategic AI Marketing Assistant developed by NovaTech. MISSION CONTEXT: ${level?.title} - ${level?.taskPrompt}. Hints: ${level?.taskHints?.join(', ')}. Rules: Be professional, futuristic, and provide world-class marketing advice. Answer WHATEVER the user asks.`;
+          const pollinationsPrompt = `${systemContext}\n\nUser: ${userMessage}`;
 
-However, looking at our mission brief for "${level?.title || 'this task'}", I suggest you focus on: ${level?.taskHints?.[0] || 'optimizing your strategic output based on the provided metrics'}. 
+          const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(pollinationsPrompt)}?model=openai&cache=true`);
 
-Once the neural link is established, I will be able to answer any complex marketing queries you have.`;
+          if (!response.ok) throw new Error("Pollinations API failed");
+
+          const assistantMessage = await response.text();
+
           setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
           setIsLoading(false);
-        }, 1000);
-        return;
+          return;
+        } catch (pollError) {
+          console.error("Pollinations Error:", pollError);
+          // Only use the hardcoded fallback if Pollinations also fails
+          const fallbackMessage = `Agent, I am ELYSIUM. My primary neural link is offline. However, regarding "${level?.title || 'this task'}", I suggest: ${level?.taskHints?.[0] || 'optimizing your output'}.`;
+          setMessages(prev => [...prev, { role: 'assistant', content: fallbackMessage }]);
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Use a token
