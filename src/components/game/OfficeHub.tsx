@@ -37,7 +37,7 @@ import { OfficeCharacters } from './OfficeCharacters';
 import { PlayerAvatarDisplay } from './PlayerAvatarDisplay';
 import { ThemeToggle } from './ThemeToggle';
 import { AIAssistant } from './AIAssistant';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, ComposedChart, Area, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts';
 import { toast } from 'sonner';
 
 const parseTimeToMinutes = (timeStr: string) => {
@@ -385,49 +385,93 @@ export const OfficeHub: React.FC = () => {
               </div>
             </div>
 
-            <div className="h-[200px] md:h-[250px] w-full relative z-10">
+            <div className="h-[250px] md:h-[300px] w-full relative z-10">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <ComposedChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
+                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
                     </linearGradient>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.2} />
+                    </linearGradient>
                   </defs>
+
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="rgba(255,255,255,0.05)"
+                  />
+
+                  <XAxis
+                    dataKey="day"
+                    hide
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    hide
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    hide
+                  />
+
                   <Tooltip
+                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      borderColor: 'hsl(var(--border))',
-                      borderRadius: '1rem',
+                      backgroundColor: 'rgba(0,0,0,0.8)',
+                      backdropFilter: 'blur(10px)',
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      borderRadius: '1.5rem',
                       fontSize: '10px',
                       fontWeight: 900,
-                      textTransform: 'uppercase'
+                      textTransform: 'uppercase',
+                      boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
                     }}
+                    itemStyle={{ padding: '2px 0' }}
                   />
-                  <Area
-                    type="monotone"
+
+                  {/* Volume Bars - Leads */}
+                  <Bar
+                    yAxisId="right"
                     dataKey="leads"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    fillOpacity={1}
-                    fill="url(#colorLeads)"
-                    animationDuration={1500}
-                  />
+                    barSize={20}
+                    radius={[4, 4, 0, 0]}
+                  >
+                    {growthData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill="url(#colorLeads)"
+                        className="filter drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                      />
+                    ))}
+                  </Bar>
+
+                  {/* Trend Area - Revenue */}
                   <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="none"
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                  />
+
+                  {/* Trend Line - Revenue */}
+                  <Line
+                    yAxisId="left"
                     type="monotone"
                     dataKey="revenue"
                     stroke="#0ea5e9"
                     strokeWidth={4}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    animationDuration={1500}
+                    dot={{ fill: '#0ea5e9', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                    activeDot={{ r: 8, strokeWidth: 0, className: "animate-pulse" }}
+                    animationDuration={2000}
                   />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
