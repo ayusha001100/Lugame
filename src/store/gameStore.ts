@@ -141,7 +141,7 @@ const getDefaultStats = (): PlayerStats => ({
 const getDefaultWorldState = (): WorldState => ({
   currentDay: 1,
   dayProgress: 0,
-  unlockedRooms: ['marketing'],
+  unlockedRooms: ['marketing', 'ads', 'content', 'analytics', 'manager'],
   narrativeFlags: [],
   npcMoods: { manager: 5, designer: 5, founder: 3 },
   activeCampaigns: []
@@ -485,10 +485,7 @@ export const useGameStore = create<GameState>()(
       clearPendingAchievement: () => set({ pendingAchievement: null }),
       checkAchievements: () => { },
       isLevelUnlocked: (levelId) => {
-        const p = get().player;
-        if (!p) return false;
-        if (levelId === 1) return true;
-        return p.completedLevels.includes(levelId - 1);
+        return true; // Unlock everything for all
       },
       retryLevel: () => {
         const { player: p, useToken, consumeStamina, resetAttempt, setScreen } = get();
@@ -513,9 +510,7 @@ export const useGameStore = create<GameState>()(
         toast.success("Lesson Complete! +1 Retry Token Earned.");
       },
       canPlay: () => {
-        const p = get().player;
-        if (!p) return false;
-        return p.isPremium || p.stamina >= LEVEL_STAMINA_COST;
+        return true; // Unlock everything for all
       },
       useAIToken: (levelId) => {
         const p = get().player;

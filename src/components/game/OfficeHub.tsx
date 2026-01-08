@@ -126,15 +126,7 @@ export const OfficeHub: React.FC = () => {
   const levelProgress = (currentLevelXp / 1000) * 100;
 
   const handleRoomClick = (roomId: string) => {
-    if (!isClockedIn || isResting) {
-      toast.error(isLateNight ? "The office is closed! Go get some rest." : "You must Clock In before starting your shift!");
-      return;
-    }
-    if (player.stats.energy < ENERGY_COST_PER_TASK && !player.isPremium) {
-      playSfx('failure');
-      toast.error("You're too exhausted! Rest or wait for energy to refill.");
-      return;
-    }
+    // Requirements bypassed: Everything Unlocked
     playSfx('transition');
     setCurrentRoom(roomId);
     setScreen('room');
@@ -536,7 +528,7 @@ export const OfficeHub: React.FC = () => {
           {OFFICE_ROOMS.map((room, index) => {
             const roomLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
             const completedInRoom = roomLevels.filter(l => player.completedLevels.includes(l.id)).length;
-            const isUnlocked = index === 0 || completedInRoom > 0 || roomLevels.some(l => isLevelUnlocked(l.id));
+            const isUnlocked = true; // Everything Unlocked for all
 
             return (
               <motion.button
