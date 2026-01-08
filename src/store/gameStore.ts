@@ -124,7 +124,7 @@ const parseTimeToMinutes = (timeStr: string) => {
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const getDefaultStats = (): PlayerStats => ({
-  skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0 },
+  skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0, Strategy: 0, Design: 0 },
   reputation: 10,
   trust: { manager: 50, designer: 50, founder: 20 },
   performanceKPIs: {
@@ -428,7 +428,7 @@ export const useGameStore = create<GameState>()(
             growthData: newGrowthData,
             player: {
               ...currentP,
-              tokens: currentP.tokens + 1,
+              tokens: currentP.tokens + 2,
               completedPhases: updatedPhases,
               stats: {
                 ...currentP.stats,
@@ -440,7 +440,7 @@ export const useGameStore = create<GameState>()(
             }
           });
 
-          toast.success("Mission Intel synced. +1 Credit earned.");
+          toast.success("Mission Intel synced. +2 Credits earned.");
         } else {
           // Handle Failure
           get().loseLife();
@@ -559,7 +559,11 @@ export const useGameStore = create<GameState>()(
               ...currentP.stats,
               performanceKPIs: updatedKPIs,
               energy: passed ? Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK) : currentP.stats.energy,
-              reputation: Math.min(100, currentP.stats.reputation + (portfolioItem.score >= 80 ? 5 : 2))
+              reputation: Math.min(100, currentP.stats.reputation + (portfolioItem.score >= 80 ? 5 : 2)),
+              skillTree: {
+                ...currentP.stats.skillTree,
+                [portfolioItem.category]: Math.min(10, (currentP.stats.skillTree[portfolioItem.category] || 0) + (passed ? 1 : 0))
+              }
             },
             lastStaminaRegenAt: new Date()
           }
@@ -629,19 +633,35 @@ export const useGameStore = create<GameState>()(
         return p.completedLevels.includes(levelId - 1);
       },
       retryLevel: () => {
-        const { player: p, useToken, consumeStamina, resetAttempt, setScreen } = get();
+        const { player: p, useToken, consumeStamina, resetAttempt, setScreen, updatePlayer } = get();
         if (!p) return false;
+
+        // Priority: Use Token (Restores resources + Retries)
         if (p.tokens >= 1) {
           useToken(1);
+
+          // CRITICAL FIX: Restore lives/energy so the 'tick' check doesn't immediately lock the screen again
+          updatePlayer({
+            lives: MAX_LIVES,
+            stats: {
+              ...p.stats,
+              energy: Math.max(p.stats.energy, 50) // Restore to at least 50% energy
+            }
+          });
+
           resetAttempt();
           setScreen('level');
+          toast.success("Vitality Restored! Retrying Mission.");
           return true;
-        } else if (p.stamina >= 20) {
+        }
+        // Secondary: Use Energy (Just Retries)
+        else if (p.stats.energy >= 20) {
           consumeStamina(20);
           resetAttempt();
           setScreen('level');
           return true;
         }
+
         setScreen('no-lives');
         return false;
       },

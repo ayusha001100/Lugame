@@ -47,8 +47,17 @@ export const PortfolioView: React.FC = () => {
 
   const categories = ['SEO', 'Ads', 'Copy', 'Strategy', 'Analytics', 'Design'];
 
+  const normalizeCategory = (cat: string) => {
+    if (cat === 'MARKETING') return 'Strategy';
+    if (cat === 'ADS') return 'Ads';
+    if (cat === 'CONTENT') return 'Design';
+    if (cat === 'ANALYTICS') return 'Analytics';
+    // Handle specific level titles/competencies if stored in category (fallback)
+    return cat;
+  };
+
   const filteredPortfolio = selectedTag
-    ? sortedPortfolio.filter(item => item.category === selectedTag)
+    ? sortedPortfolio.filter(item => normalizeCategory(item.category) === selectedTag || item.category === selectedTag)
     : sortedPortfolio;
 
   const stats = [

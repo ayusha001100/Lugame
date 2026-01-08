@@ -13,7 +13,8 @@ import {
   PieChart,
   ArrowUpRight,
   ArrowDownRight,
-  Coins
+  Coins,
+  Crown
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -212,18 +213,30 @@ export const SimulationView: React.FC = () => {
                 <div key={skill} className="space-y-3">
                   <div className="flex justify-between items-end">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-muted-foreground">{skill}</span>
-                      <span className="text-lg font-black italic">LVL {level}</span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{skill}</span>
+                        {level >= 8 && <Crown className="w-3 h-3 text-yellow-500" />}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-black italic">LVL {level}</span>
+                        <span className="text-[10px] font-bold text-primary uppercase opacity-80">
+                          {level < 3 ? "Novice" : level < 7 ? "Pro" : "Elite"}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-bold text-primary">Next: {(level + 1) * 1000} XP</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                      {level >= 10 ? "MAX RANK" : "Complete Missions to Rank Up"}
+                    </span>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 h-2 bg-black/20 rounded-full p-0.5 border border-white/5">
                     {[...Array(10)].map((_, step) => (
                       <div
                         key={step}
                         className={cn(
-                          "h-1.5 flex-1 rounded-full",
-                          step < level ? "bg-primary shadow-[0_0_8px_rgba(234,179,8,0.4)]" : "bg-muted"
+                          "h-full flex-1 rounded-full transition-all duration-500",
+                          step < level
+                            ? "bg-gradient-to-r from-primary to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                            : "bg-white/5"
                         )}
                       />
                     ))}

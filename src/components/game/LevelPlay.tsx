@@ -175,10 +175,19 @@ export const LevelPlay: React.FC = () => {
         if (impact) updateKPIs(impact);
         updateTrust(getNpcType(level.room), 5);
 
+        const getPortfolioCategory = (lvl: any) => {
+          if (lvl.room === 'ads') return 'Ads';
+          if (lvl.room === 'analytics') return 'Analytics';
+          if (lvl.room === 'content') return 'Design';
+          // Differentiate Marketing levels
+          if (lvl.competencies?.some((c: string) => c.includes('Copy') || c.includes('Messaging'))) return 'Copy';
+          return 'Strategy';
+        };
+
         const portfolioItem: PortfolioItem = {
           levelId: level.id,
           title: level.title,
-          category: level.room.toUpperCase() as any,
+          category: getPortfolioCategory(level) as any,
           content: finalSubmission,
           score: evaluation.score,
           feedback: evaluation as any,
