@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { GameLevel } from '@/types/game';
 import { Button } from '@/components/ui/button';
-import { Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Check, X, ArrowRight, ArrowLeft, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SwipeTaskProps {
@@ -16,6 +16,7 @@ export const SwipeTask: React.FC<SwipeTaskProps> = ({ level, onComplete, isEvalu
     const [currentIndex, setCurrentIndex] = useState(0);
     const [results, setResults] = useState<Record<string, 'approve' | 'reject'>>({});
     const [exitX, setExitX] = useState<number>(0);
+    const [showHints, setShowHints] = useState(false);
 
     const handleSwipe = (direction: 'left' | 'right') => {
         const item = items[currentIndex];
@@ -52,12 +53,12 @@ export const SwipeTask: React.FC<SwipeTaskProps> = ({ level, onComplete, isEvalu
                 <p className="text-muted-foreground text-sm font-medium">Swipe RIGHT to Approve, LEFT to Reject</p>
                 <div className="flex justify-center gap-2 mt-4">
                     {items.map((_, i) => (
-                        <div 
-                            key={i} 
+                        <div
+                            key={i}
                             className={cn(
                                 "h-1 rounded-full transition-all duration-300",
                                 i === currentIndex ? "w-8 bg-primary" : (i < currentIndex ? "w-4 bg-primary/40" : "w-4 bg-white/10")
-                            )} 
+                            )}
                         />
                     ))}
                 </div>
@@ -94,19 +95,56 @@ export const SwipeTask: React.FC<SwipeTaskProps> = ({ level, onComplete, isEvalu
                 </AnimatePresence>
             </div>
 
-            <div className="flex justify-center gap-6">
+            <div className="flex flex-col items-center gap-6">
                 <button
-                    onClick={() => handleSwipe('left')}
-                    className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
+                    onClick={() => setShowHints(!showHints)}
+                    className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-full hover:bg-white/5"
                 >
-                    <X className="w-8 h-8" />
+                    <Lightbulb className={cn("w-4 h-4", showHints && "text-primary")} />
+                    {showHints ? 'Hide Strategic Intel' : 'Reveal Intel'}
                 </button>
-                <button
-                    onClick={() => handleSwipe('right')}
-                    className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500 hover:bg-green-500 hover:text-white transition-all shadow-lg shadow-green-500/10"
-                >
-                    <Check className="w-8 h-8" />
-                </button>
+
+                <div className="flex justify-center gap-6">
+                    <button
+                        onClick={() => handleSwipe('left')}
+                        className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                    <button
+                        onClick={() => handleSwipe('right')}
+                        className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500 hover:bg-green-500 hover:text-white transition-all shadow-lg shadow-green-500/10"
+                    >
+                        <Check className="w-8 h-8" />
+                    </button>
+                </div>
+
+                {/* Hints Section */}
+                <AnimatePresence>
+                    {showHints && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="w-full overflow-hidden"
+                        >
+                            <div className="grid gap-3 pt-4 text-left">
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Pattern Recognition: Look for repetitive structures that indicate automated vs. human copy.",
+                                    "Emotional Frequency: High-converting hooks often trigger curiosity or urgency.",
+                                    "Clarity Scale: If you have to read it twice to understand the value, it's a 'Reject'.",
+                                    "Mobile First: Ensure the hook length is optimized for small-screen visibility.",
+                                    "Check Against Brief: Does this hook specifically target the segment assigned in the mission start?"
+                                ]).map((hint, i) => (
+                                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
+                                        <span className="text-primary font-black">#0{i + 1}</span>
+                                        <span className="text-sm text-muted-foreground">{hint}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

@@ -3,7 +3,7 @@ import { GameLevel } from '@/types/game';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Highlighter, Trash2, CheckCircle2 } from 'lucide-react';
+import { Highlighter, Trash2, CheckCircle2, Lightbulb } from 'lucide-react';
 
 interface MarkupTaskProps {
     level: GameLevel;
@@ -14,6 +14,7 @@ interface MarkupTaskProps {
 export const MarkupTask: React.FC<MarkupTaskProps> = ({ level, onComplete, isEvaluating }) => {
     const { text = "", targets = [] } = level.taskData || {};
     const [selectedWords, setSelectedWords] = useState<number[]>([]);
+    const [showHints, setShowHints] = useState(false);
 
     const words = text.split(' ');
 
@@ -47,8 +48,8 @@ export const MarkupTask: React.FC<MarkupTaskProps> = ({ level, onComplete, isEva
                             onClick={() => toggleWord(i)}
                             className={cn(
                                 "text-lg md:text-xl font-medium px-1.5 py-0.5 rounded-lg transition-all border-b-2 border-transparent",
-                                selectedWords.includes(i) 
-                                    ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(234,179,8,0.2)]" 
+                                selectedWords.includes(i)
+                                    ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(234,179,8,0.2)]"
                                     : "hover:bg-white/5"
                             )}
                         >
@@ -58,24 +59,61 @@ export const MarkupTask: React.FC<MarkupTaskProps> = ({ level, onComplete, isEva
                 </div>
             </div>
 
-            <div className="flex justify-center gap-4">
-                <Button
-                    variant="glass"
-                    onClick={reset}
-                    className="rounded-xl h-12 text-[10px] font-black uppercase tracking-widest"
+            <div className="flex flex-col items-center gap-6">
+                <button
+                    onClick={() => setShowHints(!showHints)}
+                    className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-full hover:bg-white/5"
                 >
-                    <Trash2 className="w-3 h-3 mr-2" />
-                    Clear All
-                </Button>
-                <Button
-                    variant="glow"
-                    disabled={isEvaluating || selectedWords.length === 0}
-                    onClick={() => onComplete(selectedWords.map(i => words[i]).join(' '))}
-                    className="rounded-2xl px-12 h-14 text-xs font-black uppercase tracking-widest"
-                >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    {isEvaluating ? 'Analyzing...' : 'Finalize Markup'}
-                </Button>
+                    <Lightbulb className={cn("w-4 h-4", showHints && "text-primary")} />
+                    {showHints ? 'Hide Strategic Intel' : 'Reveal Intel'}
+                </button>
+
+                <div className="flex justify-center gap-4">
+                    <Button
+                        variant="glass"
+                        onClick={reset}
+                        className="rounded-xl h-12 text-[10px] font-black uppercase tracking-widest"
+                    >
+                        <Trash2 className="w-3 h-3 mr-2" />
+                        Clear All
+                    </Button>
+                    <Button
+                        variant="glow"
+                        disabled={isEvaluating || selectedWords.length === 0}
+                        onClick={() => onComplete(selectedWords.map(i => words[i]).join(' '))}
+                        className="rounded-2xl px-12 h-14 text-xs font-black uppercase tracking-widest"
+                    >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        {isEvaluating ? 'Analyzing...' : 'Finalize Markup'}
+                    </Button>
+                </div>
+
+                {/* Hints Section */}
+                <AnimatePresence>
+                    {showHints && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="w-full overflow-hidden"
+                        >
+                            <div className="grid md:grid-cols-2 gap-4 pt-4 text-left">
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Emotional Anchors: Highlight words that trigger a visceral reaction or subconscious desire.",
+                                    "Technical Accuracy: Look for terms that might be technically correct but jargon-heavy for the audience.",
+                                    "Clarity Check: Identify any ambiguous phrasing that could lead to user confusion.",
+                                    "Tone Consistency: Spot keywords that clash with the overall 'Professional' or 'Casual' briefing.",
+                                    "NLP Impact: Select words that AIs and search engines use to determine content relevance."
+                                ]).map((hint, i) => (
+                                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
+                                        <span className="text-primary font-black">#0{i + 1}</span>
+                                        <span className="text-sm text-muted-foreground">{hint}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

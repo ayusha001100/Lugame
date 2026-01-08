@@ -129,7 +129,7 @@ export const EvaluationScreen: React.FC = () => {
 
               <div>
                 <h3 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Director's Verdict</h3>
-                <h2 className="text-lg md:text-xl font-black italic uppercase tracking-tight">Vikram Singh</h2>
+                <h2 className="text-lg md:text-xl font-black italic uppercase tracking-tight">{level.npcName}</h2>
               </div>
 
               <div className="relative">

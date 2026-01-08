@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { GAME_LEVELS } from '@/data/levels';
 import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
-  Clock,
   Star,
-  Heart,
   Loader2,
   AlertTriangle,
   Timer,
@@ -19,18 +17,17 @@ import { toast } from 'sonner';
 import { NPCDialogueBox } from './NPCDialogueBox';
 import { BannerCanvas } from './BannerCanvas';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DialogueNode, DialogueOption, PortfolioItem } from '@/types/game';
+import { DialogueNode, DialogueOption } from '@/types/game';
 
 interface CanvasElementData {
   type: string;
   properties: Record<string, unknown>;
 }
 
-// Timer durations based on difficulty (in seconds)
 const TIMER_DURATIONS = {
-  easy: 10 * 60, // 10 minutes
-  medium: 7 * 60, // 7 minutes  
-  hard: 5 * 60, // 5 minutes
+  easy: 10 * 60,
+  medium: 7 * 60,
+  hard: 5 * 60,
 };
 
 export const CreativeLevelPlay: React.FC = () => {
@@ -43,7 +40,6 @@ export const CreativeLevelPlay: React.FC = () => {
     incrementAttempt,
     addXP,
     completeLevel,
-    consumeStamina,
     canPlay
   } = useGameStore();
 
@@ -53,10 +49,6 @@ export const CreativeLevelPlay: React.FC = () => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerStarted, setTimerStarted] = useState(false);
-  const [submittedDesign, setSubmittedDesign] = useState<{
-    imageData: string;
-    elements: CanvasElementData[];
-  } | null>(null);
 
   const level = GAME_LEVELS.find(l => l.id === currentLevelId);
 
@@ -72,10 +64,8 @@ export const CreativeLevelPlay: React.FC = () => {
     }
   }, [canPlay, player, setScreen]);
 
-  // Get difficulty from level
   const getDifficulty = (): 'easy' | 'medium' | 'hard' => {
     if (!level) return 'medium';
-    // Creative levels 11, 12, 13 map to easy, medium, hard
     if (level.id === 11) return 'easy';
     if (level.id === 12) return 'medium';
     if (level.id === 13) return 'hard';
@@ -84,7 +74,6 @@ export const CreativeLevelPlay: React.FC = () => {
 
   const difficulty = getDifficulty();
 
-  // Initialize timer when task is shown
   useEffect(() => {
     if (showTask && !timerStarted) {
       setTimeLeft(TIMER_DURATIONS[difficulty]);
@@ -92,7 +81,6 @@ export const CreativeLevelPlay: React.FC = () => {
     }
   }, [showTask, timerStarted, difficulty]);
 
-  // Timer countdown
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
 
@@ -100,7 +88,6 @@ export const CreativeLevelPlay: React.FC = () => {
       setTimeLeft(prev => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          // Time's up - auto fail
           handleTimeUp();
           return 0;
         }
@@ -115,10 +102,6 @@ export const CreativeLevelPlay: React.FC = () => {
     playSfx('failure');
     toast.error("Time's up! You ran out of time.");
 
-    if (!player?.isPremium) {
-      consumeStamina(10);
-    }
-
     setEvaluation({
       score: 0,
       passed: false,
@@ -132,6 +115,7 @@ export const CreativeLevelPlay: React.FC = () => {
       attemptsLeft: (level?.rubric.maxAttempts || 3) - currentAttempt
     });
 
+    useGameStore.getState().loseLife();
     incrementAttempt();
     setScreen('evaluation');
   };
@@ -185,7 +169,6 @@ export const CreativeLevelPlay: React.FC = () => {
   };
 
   const handleCanvasExport = (imageData: string, elements: CanvasElementData[]) => {
-    setSubmittedDesign({ imageData, elements });
     handleSubmit(imageData, elements);
   };
 
@@ -237,9 +220,7 @@ export const CreativeLevelPlay: React.FC = () => {
         }, isFirstTry);
       } else {
         playSfx('failure');
-        if (!player.isPremium) {
-          consumeStamina(10);
-        }
+        useGameStore.getState().loseLife();
         if (evaluation.canRetry) {
           incrementAttempt();
         }
@@ -262,8 +243,7 @@ export const CreativeLevelPlay: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
-      {/* Header */}
+    <div className="min-h-screen p-4 md:p-6 bg-background">
       <header className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
           <Button
@@ -285,7 +265,6 @@ export const CreativeLevelPlay: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 w-full sm:w-auto bg-card/50 backdrop-blur-md p-3 rounded-2xl border border-border/50">
-          {/* Difficulty Badge */}
           <span className={cn(
             'px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-black uppercase border tracking-widest',
             difficultyBadge[difficulty].color
@@ -293,7 +272,6 @@ export const CreativeLevelPlay: React.FC = () => {
             {difficultyBadge[difficulty].label}
           </span>
 
-          {/* Timer */}
           {showTask && timeLeft !== null && (
             <motion.div
               initial={{ scale: 0 }}
@@ -310,10 +288,9 @@ export const CreativeLevelPlay: React.FC = () => {
 
           <div className="h-4 w-px bg-border" />
 
-          {/* Lives / Stamina */}
           <div className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-primary" />
-            <span className={cn("text-[10px] md:text-xs font-black italic", player.stamina < 20 ? "text-red-500" : "text-primary")}>{player.stamina}%</span>
+            <span className={cn("text-[10px] md:text-xs font-black italic", player.stats.energy < 20 ? "text-red-500" : "text-primary")}>{player.stats.energy}%</span>
           </div>
 
           <div className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase text-muted-foreground italic">
@@ -322,7 +299,6 @@ export const CreativeLevelPlay: React.FC = () => {
         </div>
       </header>
 
-      {/* Level Info */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -335,7 +311,6 @@ export const CreativeLevelPlay: React.FC = () => {
         <p className="text-muted-foreground text-sm">{level.subtitle}</p>
       </motion.div>
 
-      {/* NPC Dialogue or Canvas */}
       <AnimatePresence mode="wait">
         {!showTask && currentNode ? (
           <motion.div
@@ -361,7 +336,6 @@ export const CreativeLevelPlay: React.FC = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-5xl mx-auto"
           >
-            {/* Warning Banner for Low Time */}
             <AnimatePresence>
               {timeLeft !== null && timeLeft <= 60 && timeLeft > 0 && (
                 <motion.div
@@ -378,7 +352,6 @@ export const CreativeLevelPlay: React.FC = () => {
               )}
             </AnimatePresence>
 
-            {/* Loading Overlay */}
             <AnimatePresence>
               {isEvaluating && (
                 <motion.div

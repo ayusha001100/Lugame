@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, RefreshCcw, ArrowRightLeft } from 'lucide-react';
+import { CheckCircle2, RefreshCcw, ArrowRightLeft, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MatchFollowingTaskProps {
@@ -18,6 +18,7 @@ export const MatchFollowingTask: React.FC<MatchFollowingTaskProps> = ({ level, o
     const [rightItems, setRightItems] = useState<string[]>([]);
     const [matches, setMatches] = useState<Record<string, string>>({});
     const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+    const [showHints, setShowHints] = useState(false);
 
     useEffect(() => {
         // Shuffle right items to make it a challenge
@@ -109,20 +110,57 @@ export const MatchFollowingTask: React.FC<MatchFollowingTaskProps> = ({ level, o
                 </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-border">
-                <Button variant="ghost" onClick={handleReset} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                    <RefreshCcw className="w-4 h-4 mr-2" />
-                    Reset All Pairs
-                </Button>
+            <div className="flex flex-col items-center gap-6 pt-8 border-t border-border">
+                <div className="flex flex-wrap items-center justify-center gap-6">
+                    <Button variant="ghost" onClick={handleReset} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-white/5 px-4 rounded-full">
+                        <RefreshCcw className="w-4 h-4 mr-2" />
+                        Reset All Pairs
+                    </Button>
+
+                    <button
+                        onClick={() => setShowHints(!showHints)}
+                        className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-full hover:bg-white/5"
+                    >
+                        <Lightbulb className={cn("w-4 h-4", showHints && "text-primary")} />
+                        {showHints ? 'Hide Strategic Intel' : 'Reveal Intel'}
+                    </button>
+                </div>
 
                 <Button
                     size="xl"
                     disabled={!allMatched || isEvaluating}
                     onClick={handleSubmit}
-                    className="rounded-2xl px-12 font-black italic uppercase tracking-wider shadow-xl"
+                    className="rounded-2xl px-12 font-black italic uppercase tracking-wider shadow-xl min-w-[280px]"
                 >
                     {isEvaluating ? "EVALUATING..." : "SUBMIT CALIBRATION"}
                 </Button>
+
+                {/* Hints Section */}
+                <AnimatePresence>
+                    {showHints && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="w-full overflow-hidden"
+                        >
+                            <div className="grid md:grid-cols-2 gap-4 pt-4 text-left">
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Logical Pairings: Match high-frequency actions with their most direct business outcomes.",
+                                    "Terminology Alignment: Identify industry-standard pairs (e.g., SEO and Organic Traffic).",
+                                    "User Journey Mapping: Think about which tactic belongs to the 'Awareness' vs 'Conversion' phase.",
+                                    "Operational Efficiency: Some pairs are designed to highlight how automation improves manual workflows.",
+                                    "Nuance Check: Look for subtle differences in wording that might distinguish two similar-looking items."
+                                ]).map((hint, i) => (
+                                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
+                                        <span className="text-primary font-black">#0{i + 1}</span>
+                                        <span className="text-sm text-muted-foreground">{hint}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

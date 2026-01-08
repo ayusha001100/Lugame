@@ -31,7 +31,7 @@ interface GameState {
   gameTime: string; // "09:00 AM" to "10:00 PM"
   isClockedIn: boolean;
   isResting: boolean; // New state for 10 PM - 9 AM
-  growthData: { day: number; revenue: number; leads: number }[];
+  growthData: { day: number; timestamp: number; revenue: number; leads: number; type?: string; isBaseline?: boolean }[];
 
   // Identity & Profile (MODULE 1)
   setPlayer: (player: Player) => void;
@@ -64,6 +64,7 @@ interface GameState {
   setEvaluation: (result: EvaluationResult | null) => void;
   incrementAttempt: () => void;
   resetAttempt: () => void;
+  loseLife: () => void;
 
   // Stamina & Monetization (MODULE 7)
   consumeStamina: (amount: number) => boolean;
@@ -163,7 +164,25 @@ export const useGameStore = create<GameState>()(
       gameTime: "09:00 AM",
       isClockedIn: false,
       isResting: false,
-      growthData: [{ day: 0, revenue: 0, leads: 0 }],
+      growthData: (() => {
+        // Generate an organic-looking baseline trajectory for the company before the player started
+        const baseline = [];
+        const now = Date.now();
+        let curRevenue = 2000;
+        let curLeads = 50;
+        for (let i = -20; i < 0; i++) {
+          curRevenue += Math.floor(Math.random() * 200);
+          curLeads += Math.floor(Math.random() * 5);
+          baseline.push({
+            day: -1, // Hidden but mapped
+            timestamp: now - (Math.abs(i) * 3600 * 1000), // Hourly steps back
+            revenue: curRevenue,
+            leads: curLeads,
+            isBaseline: true
+          });
+        }
+        return baseline;
+      })(),
       audio: {
         isMusicPlaying: false,
         isSfxEnabled: true,
@@ -251,12 +270,12 @@ export const useGameStore = create<GameState>()(
             ...p.stats,
             performanceKPIs: {
               roas: Math.max(0, current.roas + (impact.roas || 0)),
-              cac: Math.max(0, current.cac + (impact.cac || 0)),
+              cac: Math.max(0, Math.round(current.cac + (impact.cac || 0))),
               conversionRate: Math.min(100, Math.max(0, current.conversionRate + (impact.conversionRate || 0))),
-              leads: Math.max(0, current.leads + (impact.leads || 0)),
+              leads: Math.max(0, Math.round(current.leads + (impact.leads || 0))),
               budgetSpent: current.budgetSpent + (impact.budgetSpent || 0),
-              revenue: current.revenue + (impact.revenue || 0),
-              stipend: current.stipend + (impact.stipend || 0)
+              revenue: Math.max(0, Math.round(current.revenue + (impact.revenue || 0))),
+              stipend: Math.max(0, current.stipend + (impact.stipend || 0))
             }
           }
         });
@@ -330,7 +349,31 @@ export const useGameStore = create<GameState>()(
           toast.info("It's 10 PM! Time to head home.");
         }
 
-        // Consolidated Regeneration Logic
+        // Passive Growth Simulation (Marketing Pulse)
+        if (state.isClockedIn && !state.isResting) {
+          const rep = p.stats.reputation || 10;
+          if (Math.random() > 0.98) {
+            const passiveLeads = Math.random() < (rep / 100) ? 1 : 0;
+            const passiveRevenue = passiveLeads > 0 ? Math.floor(Math.random() * 50) : 0;
+            if (passiveLeads > 0 || passiveRevenue > 0) {
+              get().updateKPIs({ leads: passiveLeads, revenue: passiveRevenue });
+              const updatedKPIs = get().player?.stats.performanceKPIs;
+              if (updatedKPIs) {
+                set({
+                  growthData: [...state.growthData, {
+                    day: p.worldState.currentDay,
+                    timestamp: Date.now(),
+                    revenue: updatedKPIs.revenue,
+                    leads: updatedKPIs.leads,
+                    type: 'passive'
+                  }].slice(-100)
+                });
+              }
+            }
+          }
+        }
+
+        // Consolidated Regeneration Logic - MANDATORY EVERY TICK
         state.checkStaminaRegen();
 
         // Screen Lock Check: Redirect if energy <= 10 or lives <= 0, and not already on lock screens
@@ -355,39 +398,52 @@ export const useGameStore = create<GameState>()(
         const phase = level?.phases?.find(ph => ph.id === phaseId);
 
         if (result.passed) {
-          if (phase?.stipendReward) {
-            get().addStipend(phase.stipendReward);
-          }
-          get().addTokens(1);
+          // Calculate all changes based on the most current state values
+          const currentP = get().player;
+          if (!currentP) return;
+
+          const updatedKPIs = {
+            ...currentP.stats.performanceKPIs,
+            ...(result.kpiImpact || {})
+          };
+
+          const stipendBonus = phase?.stipendReward || 0;
+          if (stipendBonus > 0) updatedKPIs.stipend += stipendBonus;
+
+          const newGrowthData = [...get().growthData, {
+            day: currentP.worldState.currentDay,
+            timestamp: Date.now(),
+            revenue: updatedKPIs.revenue,
+            leads: updatedKPIs.leads,
+            type: 'phase'
+          }].slice(-100);
+
+          const currentCompleted = currentP.completedPhases?.[levelId] || [];
+          const updatedPhases = !currentCompleted.includes(phaseId) ? {
+            ...(currentP.completedPhases || {}),
+            [levelId]: [...currentCompleted, phaseId]
+          } : currentP.completedPhases;
+
+          set({
+            growthData: newGrowthData,
+            player: {
+              ...currentP,
+              tokens: currentP.tokens + 1,
+              completedPhases: updatedPhases,
+              stats: {
+                ...currentP.stats,
+                performanceKPIs: updatedKPIs,
+                energy: Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK),
+                reputation: Math.min(100, currentP.stats.reputation + 1)
+              },
+              lastStaminaRegenAt: new Date()
+            }
+          });
+
           toast.success("Mission Intel synced. +1 Credit earned.");
-
-          // Persist phase completion
-          const currentCompleted = p.completedPhases?.[levelId] || [];
-          if (!currentCompleted.includes(phaseId)) {
-            get().updatePlayer({
-              completedPhases: {
-                ...(p.completedPhases || {}),
-                [levelId]: [...currentCompleted, phaseId]
-              }
-            });
-          }
-          // Energy decreases by 15% after every CORRECT task
-          get().updatePlayer({
-            stamina: Math.max(0, p.stamina - ENERGY_COST_PER_TASK),
-            stats: {
-              ...p.stats,
-              energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK)
-            },
-            lastStaminaRegenAt: new Date()
-          });
-        }
-
-        // Lives decrease by one if wrong answer
-        if (!result.passed) {
-          get().updatePlayer({
-            lives: Math.max(0, p.lives - 1),
-            lastLifeLostAt: new Date()
-          });
+        } else {
+          // Handle Failure
+          get().loseLife();
         }
       },
 
@@ -460,51 +516,59 @@ export const useGameStore = create<GameState>()(
       },
 
       completeLevel: (levelId, portfolioItem, isFirstTry = false) => {
-        const p = get().player;
-        if (!p) return;
+        const currentP = get().player;
+        if (!currentP) return;
         const level = GAME_LEVELS.find(l => l.id === levelId);
         if (!level) return;
-        const completedLevels = p.completedLevels.includes(levelId) ? p.completedLevels : [...p.completedLevels, levelId];
-        const portfolio = [...p.portfolio, portfolioItem];
+
         const impact = portfolioItem.feedback.kpiImpact || level.simulationImpact || {};
-        const stipendEarned = (portfolioItem.score / 100) * (level.stipendReward || 0);
-        const currentKPIs = p.stats.performanceKPIs;
-        const updatedKPIs: MarketingKPIs = {
-          roas: Math.max(0, currentKPIs.roas + (impact.roas || 0)),
-          cac: Math.max(0, currentKPIs.cac + (impact.cac || 0)),
-          conversionRate: Math.min(100, Math.max(0, currentKPIs.conversionRate + (impact.conversionRate || 0))),
-          leads: Math.max(0, currentKPIs.leads + (impact.leads || 0)),
-          budgetSpent: currentKPIs.budgetSpent + (impact.budgetSpent || 0),
-          revenue: currentKPIs.revenue + (impact.revenue || 0),
-          stipend: currentKPIs.stipend + stipendEarned
+        const weightedScore = portfolioItem.score / 100;
+        const stipendEarned = weightedScore * (level.stipendReward || 0);
+
+        const updatedKPIs = {
+          ...currentP.stats.performanceKPIs,
+          roas: Math.max(0, currentP.stats.performanceKPIs.roas + (impact.roas || 0)),
+          cac: Math.max(0, currentP.stats.performanceKPIs.cac + (impact.cac || 0)),
+          conversionRate: Math.min(100, Math.max(0, currentP.stats.performanceKPIs.conversionRate + (impact.conversionRate || 0))),
+          leads: Math.max(0, currentP.stats.performanceKPIs.leads + (impact.leads || 0)),
+          revenue: Math.max(0, currentP.stats.performanceKPIs.revenue + (impact.revenue || 0)),
+          stipend: currentP.stats.performanceKPIs.stipend + stipendEarned
         };
+
         const newGrowthData = [...get().growthData, {
-          day: p.worldState.currentDay,
+          day: currentP.worldState.currentDay,
+          timestamp: Date.now(),
           revenue: updatedKPIs.revenue,
-          leads: updatedKPIs.leads
-        }];
+          leads: updatedKPIs.leads,
+          type: 'level_complete'
+        }].slice(-100);
 
-        // Bonus credits for level completion
         const bonusCredits = portfolioItem.score >= 80 ? 2 : 1;
+        const passed = portfolioItem.score >= (level.rubric.passingScore || 60);
 
-        get().updatePlayer({
-          completedLevels,
-          portfolio,
-          tokens: p.tokens + bonusCredits,
-          stats: { ...p.stats, performanceKPIs: updatedKPIs, energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK) },
-          lastStaminaRegenAt: new Date()
+        set({
+          growthData: newGrowthData,
+          player: {
+            ...currentP,
+            completedLevels: passed ? (currentP.completedLevels.includes(levelId) ? currentP.completedLevels : [...currentP.completedLevels, levelId]) : currentP.completedLevels,
+            portfolio: [...currentP.portfolio, portfolioItem],
+            tokens: currentP.tokens + bonusCredits,
+            lives: !passed ? Math.max(0, currentP.lives - 1) : currentP.lives,
+            lastLifeLostAt: !passed ? new Date() : currentP.lastLifeLostAt,
+            stats: {
+              ...currentP.stats,
+              performanceKPIs: updatedKPIs,
+              energy: passed ? Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK) : currentP.stats.energy,
+              reputation: Math.min(100, currentP.stats.reputation + (portfolioItem.score >= 80 ? 5 : 2))
+            },
+            lastStaminaRegenAt: new Date()
+          }
         });
 
-        // Lives decrease by one if wrong answer (final check for non-phase levels)
-        if (portfolioItem.score < (level.rubric.passingScore || 60)) {
-          get().updatePlayer({
-            lives: Math.max(0, p.lives - 1),
-            lastLifeLostAt: new Date()
-          });
+        if (passed) {
+          get().addXP(isFirstTry ? 500 : 200);
+          get().checkAchievements(portfolioItem.score, isFirstTry);
         }
-        set({ growthData: newGrowthData });
-        get().addXP(isFirstTry ? 500 : 200);
-        get().checkAchievements(portfolioItem.score, isFirstTry);
       },
 
       setScreen: (screen) => {
@@ -615,6 +679,14 @@ export const useGameStore = create<GameState>()(
         const usedCount = currentFlags.filter(f => f.startsWith(`ai_token_${levelId}_`)).length;
         if (usedCount >= 4) return;
         get().updatePlayer({ worldState: { ...p.worldState, narrativeFlags: [...currentFlags, `ai_token_${levelId}_${usedCount + 1}`] } });
+      },
+      loseLife: () => {
+        const p = get().player;
+        if (!p) return;
+        get().updatePlayer({
+          lives: Math.max(0, p.lives - 1),
+          lastLifeLostAt: new Date()
+        });
       },
       getAITokensLeft: (levelId) => {
         const p = get().player;

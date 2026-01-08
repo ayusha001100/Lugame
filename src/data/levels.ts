@@ -209,6 +209,7 @@ export const GAME_LEVELS: GameLevel[] = [
         taskData: {
           variationA: "Tired of manual data entry?",
           variationB: "How I automated my entire startup in 10 minutes",
+          correct: "How I automated my entire startup in 10 minutes",
           winningReason: "B uses curiosity and a personal transformation narrative, which typically out-performs standard pain-point questions in cold traffic."
         },
         taskPrompt: "Between these two variations for a TikTok ad, which one is likely to have a higher CTR for cold traffic?",

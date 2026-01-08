@@ -3,7 +3,7 @@ import { GameLevel } from '@/types/game';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, Send, Sparkles } from 'lucide-react';
+import { CheckCircle2, Circle, Send, Sparkles, Lightbulb } from 'lucide-react';
 
 interface MCQTaskProps {
     level: GameLevel;
@@ -13,6 +13,7 @@ interface MCQTaskProps {
 
 export const MCQTask: React.FC<MCQTaskProps> = ({ level, onComplete, isEvaluating }) => {
     const [selected, setSelected] = useState<string[]>([]);
+    const [showHints, setShowHints] = useState(false);
     const isMulti = level.taskType === 'multi-select';
     const options = level.taskData?.options || [];
 
@@ -87,7 +88,15 @@ export const MCQTask: React.FC<MCQTaskProps> = ({ level, onComplete, isEvaluatin
             </div>
 
             {/* Submit Section */}
-            <div className="flex justify-center pt-8">
+            <div className="flex flex-col items-center gap-6 pt-8">
+                <button
+                    onClick={() => setShowHints(!showHints)}
+                    className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-full hover:bg-white/5"
+                >
+                    <Lightbulb className={cn("w-4 h-4", showHints && "text-primary")} />
+                    {showHints ? 'Hide Strategic Intel' : 'Reveal Intel'}
+                </button>
+
                 <Button
                     variant="glow"
                     size="xl"
@@ -98,6 +107,33 @@ export const MCQTask: React.FC<MCQTaskProps> = ({ level, onComplete, isEvaluatin
                     {isEvaluating ? "SYNCHRONIZING..." : "LOG DECISION"}
                     <Send className="w-6 h-6 ml-4 group-hover:translate-x-2 transition-transform" />
                 </Button>
+
+                {/* Hints Section */}
+                <AnimatePresence>
+                    {showHints && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="w-full overflow-hidden"
+                        >
+                            <div className="grid md:grid-cols-2 gap-4 pt-4">
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Analyze the psychological drivers: Identify if the audience is motivated by 'loss' or 'gain'.",
+                                    "Check NPC Alignment: Ensure your decision priorities speed and scalability.",
+                                    "Evaluate the long-term impact of this decision on the overall acquisition funnel.",
+                                    "Data-Driven Logic: Look for the specific performance target mentioned in the brief.",
+                                    "Calibrate terminology: Focus on terms that demonstrate strategic maturity."
+                                ]).map((hint, i) => (
+                                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
+                                        <span className="text-primary font-black">#0{i + 1}</span>
+                                        <span className="text-sm text-muted-foreground">{hint}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

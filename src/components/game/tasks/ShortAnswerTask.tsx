@@ -90,7 +90,13 @@ export const ShortAnswerTask: React.FC<ShortAnswerTaskProps> = ({ level, onCompl
                             className="overflow-hidden"
                         >
                             <div className="grid md:grid-cols-2 gap-4 pt-4">
-                                {level.taskHints.map((hint, i) => (
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Analyze the audience's core frustration before drafting the solution.",
+                                    "Use high-impact verbs to drive cognitive engagement.",
+                                    "Keep the sentence structure lean (under 15 words) for maximum recall.",
+                                    "Ensure the messaging aligns with the Manager's previous briefing.",
+                                    "Focus on ONE single outcome rather than multiple vague benefits."
+                                ]).map((hint, i) => (
                                     <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
                                         <span className="text-primary font-black">#0{i + 1}</span>
                                         <span className="text-sm text-muted-foreground">{hint}</span>

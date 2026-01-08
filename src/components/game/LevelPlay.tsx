@@ -190,6 +190,7 @@ export const LevelPlay: React.FC = () => {
       } else {
         playSfx('failure');
         updateTrust(getNpcType(level.room), -10);
+        useGameStore.getState().loseLife(); // Apply life loss rule
         if (evaluation.canRetry) incrementAttempt();
       }
 

@@ -20,7 +20,7 @@ export interface EvaluationResultData {
     suggestedKeywords?: string[];
 }
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
 
 /**
  * MODULE 6: AI Evaluation & Feedback Orchestrator
@@ -152,35 +152,47 @@ export const evaluateSubmission = async (
                 : "ELITE - Be extremely tough and critical.";
 
         const prompt = `
-        You are a Senior Marketing Director. Evaluate this Intern's submission.
+        You are an Elite Senior Marketing Director at a top-tier growth agency globally. Your standards are exceptionally high. Evaluate this Intern's submission with surgical precision. 
         
         CONTEXT:
-        - MISSION: ${config.levelTitle || "N/A"}
-        - TASK: ${config.levelPrompt || "N/A"}
-        - TYPE: ${config.taskType}
-        - MODE: ${evaluationMode}
-        - TARGET DATA: ${JSON.stringify(taskData)}
+        - MISSION PROTOCOL: ${config.levelTitle || "N/A"}
+        - STRATEGIC OBJECTIVE: ${config.levelPrompt || "N/A"}
+        - TASK INTERACTION TYPE: ${config.taskType}
+        - MISSION CRITICAL DATA: ${JSON.stringify(taskData)}
         
-        SUBMISSION:
+        PLAYER'S SUBMISSION:
         "${typeof submission === 'string' ? submission : JSON.stringify(submission)}"
         
-        RUBRIC:
+        ELITE EVALUATION RUBRIC:
         ${config.criteria.map(c => `- ${c.name}: ${c.description} (Weight: ${c.weight}%)`).join('\n')}
-        PASSING SCORE: ${config.passingScore}
+        MINIMUM VIABLE PERFORMANCE: ${config.passingScore}%
         
-        INSTRUCTIONS:
-        1. For 'ai_semantic' mode: Check for clarity, benefit-driven language, and audience resonance.
-        2. For 'ai_contextual' mode: Ensure variables from taskData (like pain_point, competitor) are addressed or implied.
-        3. Grade based on the difficulty context: ${difficultyContext}
+        MARKING RIGOR (THE 'BEST OF THE BEST' POLICY):
+        1. STRATEGIC SOPHISTICATION: Does the answer show deep thinking, or is it surface-level? 
+        2. QUALITY FLOOR: Generic, one-word, or overly brief answers MUST be penalized. They should NEVER exceed 40%, even if technically correct.
+        3. TACTICAL LOGIC: Does the response logically connect the variables to a high-ROAS outcome?
+        4. RIGOR SCALE: ${difficultyContext}
+        5. ELITE MARKING: 90%+ is reserved for responses that could be presented to a real Fortune 500 board.
         
-        RETURN JSON:
+        FEEDBACK PROTOCOL:
+        - Be professional, sharp, and critique like a mentor.
+        - Call out missed variables from 'Mission Critical Data' by name.
+        - Reward use of industry-standard frameworks (AIDA, Hook-Story-Offer, etc.).
+        
+        RETURN OUTPUT RIGIDLY IN THIS JSON FORMAT:
         {
-            "score": number, "passed": boolean, "feedback": "string",
-            "strengths": ["string"], "fixes": ["string"], "redoSuggestions": ["string"],
-            "nextBestAction": "string", "managerMood": "happy" | "neutral" | "disappointed" | "angry",
-            "managerMessage": "string", "suggestedKeywords": ["string"],
+            "score": number (0-100), 
+            "passed": boolean, 
+            "feedback": "A high-level summary of strategy vs outcome",
+            "strengths": ["list of 2-3 specific tactical wins"], 
+            "fixes": ["list of 2-3 critical strategic gaps"], 
+            "redoSuggestions": ["how to specifically level-up the logic"],
+            "nextBestAction": "The immediate next strategic move in the funnel", 
+            "managerMood": "happy" | "neutral" | "disappointed" | "angry",
+            "managerMessage": "Direct quote from the Director (${config.levelTitle ? 'Sarah Chen' : 'Director'})", 
+            "suggestedKeywords": ["3-5 industry terms relevant here"],
             "criteriaScores": [ { "name": "string", "score": number, "feedback": "string" } ],
-            "improvement": "string"
+            "improvement": "One sentence on the psychological/analytical shift needed"
         }
         `;
 

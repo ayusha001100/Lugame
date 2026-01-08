@@ -410,6 +410,87 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Professional Print/PDF Styles */
+@media print {
+
+  /* Hide all non-essential UI */
+  header,
+  nav,
+  footer,
+  button,
+  aside {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Reset layout for printing */
+  .max-w-7xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 2cm !important;
+  }
+
+  .grid {
+    display: block !important;
+  }
+
+  /* Glass cards become simple borders */
+  .glass-card {
+    background: white !important;
+    border: 1px solid #eee !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 1cm !important;
+    page-break-inside: avoid;
+  }
+
+  /* Section headers */
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: black !important;
+    page-break-after: avoid;
+  }
+
+  /* Force display of content */
+  .line-clamp-none,
+  .line-clamp-3 {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+  }
+
+  /* Feedbacks and Artifacts */
+  .bg-primary\/\[0\.03\],
+  .bg-white\/5 {
+    background: #f9f9f9 !important;
+    border-color: #eee !important;
+  }
+
+  .text-muted-foreground {
+    color: #666 !important;
+  }
+
+  /* Achievement badges in print */
+  .bg-gradient-gold {
+    background: #eee !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Hide background cinematic effects */
+  [class*="fixed inset-0"] {
+    display: none !important;
+  }
 }

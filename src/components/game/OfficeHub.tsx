@@ -82,10 +82,10 @@ export const OfficeHub: React.FC = () => {
       let livesStr = null;
       let energyStr = null;
 
-      // Life Timer (Regen every 1 minute now)
+      // Life Timer (2 minutes for sequential regen)
       if (player.lives < 3 && player.lastLifeLostAt) {
         const lastLost = new Date(player.lastLifeLostAt).getTime();
-        const diff = Math.max(0, (60 * 1000) - (now - lastLost)); // 1 min regen
+        const diff = Math.max(0, (120 * 1000) - (now - lastLost)); // 120s regen
         if (diff > 0) {
           const mins = Math.floor(diff / 60000);
           const secs = Math.floor((diff % 60000) / 1000);
@@ -93,10 +93,10 @@ export const OfficeHub: React.FC = () => {
         }
       }
 
-      // Energy Timer (5 seconds for 25% regen)
+      // Energy Timer (15 seconds for 10% regen)
       if (player.stats.energy < 100) {
         const lastRegen = player.lastStaminaRegenAt ? new Date(player.lastStaminaRegenAt).getTime() : 0;
-        const diff = Math.max(0, (5 * 1000) - (now - lastRegen));
+        const diff = Math.max(0, (15 * 1000) - (now - lastRegen)); // 15s regen
         if (diff > 0) {
           const secs = Math.floor((diff % 60000) / 1000);
           energyStr = `${secs}s`;
@@ -108,13 +108,6 @@ export const OfficeHub: React.FC = () => {
 
     return () => clearInterval(timer);
   }, [player]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      checkStaminaRegen();
-    }, 1000); // Check every 1s for precise regen and locks
-    return () => clearInterval(timer);
-  }, [checkStaminaRegen]);
 
   if (!player) return null;
 
@@ -131,6 +124,20 @@ export const OfficeHub: React.FC = () => {
     setCurrentRoom(roomId);
     setScreen('room');
   };
+
+  const getNetworkRank = (reputation: number) => {
+    if (reputation >= 90) return "TOP 1%";
+    if (reputation >= 70) return "TOP 5%";
+    if (reputation >= 50) return "TOP 15%";
+    if (reputation >= 30) return "TOP 30%";
+    return "TOP 50%";
+  };
+
+  const currentImpactRevenue = player.stats.performanceKPIs.revenue || 0;
+  const previousImpactRevenue = growthData.length > 1 ? growthData[growthData.length - 2].revenue : 0;
+  const impactChangePercent = previousImpactRevenue > 0
+    ? ((currentImpactRevenue - previousImpactRevenue) / previousImpactRevenue * 100).toFixed(1)
+    : "14.4"; // Fallback aesthetic value if no history
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground transition-colors duration-500">
@@ -287,9 +294,14 @@ export const OfficeHub: React.FC = () => {
               </div>
               <div className="hidden sm:flex flex-col">
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/60 leading-none">Status</span>
-                {timeLeft.lives && (
-                  <span className="text-[7px] font-bold text-destructive animate-pulse mt-1 tracking-tighter uppercase">REGEN: {timeLeft.lives}</span>
-                )}
+                <div className="flex flex-col gap-0.5 mt-1">
+                  {timeLeft.lives && (
+                    <span className="text-[7px] font-bold text-destructive animate-pulse tracking-tighter uppercase">HEART REGEN: {timeLeft.lives}</span>
+                  )}
+                  {timeLeft.energy && (
+                    <span className="text-[7px] font-bold text-primary animate-pulse tracking-tighter uppercase">ENERGY REGEN: {timeLeft.energy}</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -340,6 +352,15 @@ export const OfficeHub: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="glass"
+              size="icon"
+              onClick={() => { setScreen('portfolio'); playSfx('click'); }}
+              title="Career Portfolio"
+              className="bg-primary/5 border-primary/20"
+            >
+              <Briefcase className="w-5 h-5 text-primary" />
+            </Button>
             <ThemeToggle />
             <Button variant="glass" size="icon" onClick={() => { toggleMusic(); playSfx('click'); }}>
               {isMusicPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
@@ -369,10 +390,13 @@ export const OfficeHub: React.FC = () => {
               </div>
               <div className="text-left sm:text-right w-full sm:w-auto">
                 <span className="text-[10px] font-black uppercase text-primary">Current Impact</span>
-                <div className="text-2xl md:text-3xl font-black italic">₹{(player.stats.performanceKPIs.revenue || 0).toLocaleString()}</div>
-                <div className="flex items-center gap-1 text-success font-black italic text-[10px] justify-start sm:justify-end">
-                  <ArrowDownRight className="w-2.5 h-2.5 rotate-180" />
-                  <span>14.4%</span>
+                <div className="text-2xl md:text-3xl font-black italic">₹{currentImpactRevenue.toLocaleString()}</div>
+                <div className={cn(
+                  "flex items-center gap-1 font-black italic text-[10px] justify-start sm:justify-end",
+                  currentImpactRevenue >= previousImpactRevenue ? "text-success" : "text-destructive"
+                )}>
+                  <ArrowDownRight className={cn("w-2.5 h-2.5", currentImpactRevenue >= previousImpactRevenue && "rotate-180")} />
+                  <span>{impactChangePercent}%</span>
                 </div>
               </div>
             </div>
@@ -398,7 +422,7 @@ export const OfficeHub: React.FC = () => {
                   />
 
                   <XAxis
-                    dataKey="day"
+                    dataKey="timestamp"
                     hide
                   />
                   <YAxis
@@ -479,7 +503,7 @@ export const OfficeHub: React.FC = () => {
               </div>
               <div className="space-y-1 sm:col-span-1 col-span-2">
                 <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Network Rank</span>
-                <div className="text-lg md:text-xl font-black italic">TOP 5%</div>
+                <div className="text-lg md:text-xl font-black italic">{getNetworkRank(player.stats.reputation)}</div>
               </div>
             </div>
           </motion.div>
@@ -514,12 +538,21 @@ export const OfficeHub: React.FC = () => {
               Target Stipend Pool: ₹10,000
             </div>
 
-            <button
-              className="w-full mt-6 text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-14 shadow-lg shadow-primary/20 transition-all font-bold"
-              onClick={() => setScreen('simulation')}
-            >
-              Analyze Simulation
-            </button>
+            <div className="space-y-3 mt-6">
+              <button
+                className="w-full text-[10px] font-black uppercase tracking-[0.3em] bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-14 shadow-lg shadow-primary/20 transition-all font-bold flex items-center justify-center gap-2"
+                onClick={() => setScreen('simulation')}
+              >
+                Analyze Simulation
+              </button>
+              <button
+                className="w-full text-[10px] font-black uppercase tracking-[0.3em] bg-white/5 text-foreground hover:bg-white/10 rounded-2xl h-14 transition-all font-bold border border-white/10 flex items-center justify-center gap-2 group"
+                onClick={() => setScreen('portfolio')}
+              >
+                <Briefcase className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
+                Professional Portfolio
+              </button>
+            </div>
           </motion.div>
         </div>
 

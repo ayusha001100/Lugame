@@ -113,18 +113,6 @@ export const NoLivesScreen: React.FC = () => {
             Take 60s Micro-Lesson (+1 Token)
           </Button>
 
-          <Button
-            variant="premium"
-            size="xl"
-            className="w-full"
-            onClick={() => {
-              playSfx('click');
-              setScreen('premium');
-            }}
-          >
-            <Crown className="w-5 h-5" />
-            Unlimited Energy (Premium)
-          </Button>
 
           <Button
             variant="glass"

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Database, Zap, ArrowRight, BrainCircuit } from 'lucide-react';
+import { Database, Zap, ArrowRight, BrainCircuit, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VariableWritingTaskProps {
@@ -14,6 +14,7 @@ export const VariableWritingTask: React.FC<VariableWritingTaskProps> = ({ level,
     const { taskData, taskPrompt } = level;
     const variables = taskData.variables || {};
     const [answer, setAnswer] = useState('');
+    const [showHints, setShowHints] = useState(false);
 
     return (
         <div className="space-y-10 max-w-4xl mx-auto">
@@ -51,7 +52,15 @@ export const VariableWritingTask: React.FC<VariableWritingTaskProps> = ({ level,
                     </div>
                 </div>
 
-                <div className="flex justify-center">
+                <div className="flex flex-col items-center gap-6">
+                    <button
+                        onClick={() => setShowHints(!showHints)}
+                        className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-2 px-4 rounded-full hover:bg-white/5"
+                    >
+                        <Lightbulb className={cn("w-4 h-4", showHints && "text-primary")} />
+                        {showHints ? 'Hide Strategic Intel' : 'Reveal Intel'}
+                    </button>
+
                     <Button
                         size="xl"
                         disabled={answer.length < 5 || isEvaluating}
@@ -70,6 +79,33 @@ export const VariableWritingTask: React.FC<VariableWritingTaskProps> = ({ level,
                         />
                     </Button>
                 </div>
+
+                {/* Hints Section */}
+                <AnimatePresence>
+                    {showHints && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="w-full overflow-hidden"
+                        >
+                            <div className="grid md:grid-cols-2 gap-4 pt-4 text-left">
+                                {(level.taskHints && level.taskHints.length > 0 ? level.taskHints : [
+                                    "Synthesize Variables: Incorporate at least two of the provided data points into your answer.",
+                                    "Tone Check: Ensure your writing style matches the specific Persona Choices made earlier.",
+                                    "Logic Flow: Start with the problem, then state the variable-backed solution, then the outcome.",
+                                    "Conciseness: The more direct your response, the higher the 'Efficiency' score.",
+                                    "Alignment Check: Cross-reference your draft with the NPC's primary goal in this mission."
+                                ]).map((hint, i) => (
+                                    <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex gap-3 italic">
+                                        <span className="text-primary font-black">#0{i + 1}</span>
+                                        <span className="text-sm text-muted-foreground">{hint}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );
