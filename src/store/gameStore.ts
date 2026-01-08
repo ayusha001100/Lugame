@@ -95,14 +95,14 @@ interface GameState {
   earnRetryToken: () => void;
 }
 
-const STAMINA_REGEN_TIME = 5 * 1000; // 5 seconds for energy regen
-const LIFE_REGEN_TIME = 60 * 1000; // 1 minute per life point (FIXED: 24h real = 24m game, so 1m game = 1s real. User said 1 life per 1m real world)
+const STAMINA_REGEN_TIME = 15 * 1000; // 15 seconds for energy regen
+const LIFE_REGEN_TIME = 120 * 1000; // 2 minutes for 1 life point
 const MAX_STAMINA = 100;
 const MAX_LIVES = 3;
 const LEVEL_STAMINA_COST = 10;
-export const ENERGY_COST_PER_TASK = 9;
+export const ENERGY_COST_PER_TASK = 15;
 const STIPEND_PENALTY_EARLY_CLOCK_OUT = 200; // Penalty for clocking out before 6 PM
-const ENERGY_REGEN_AMOUNT = 2; // Slow regen during day
+const ENERGY_REGEN_AMOUNT = 10; // 10% regen every 15s
 
 const formatTime = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60) % 24;
@@ -406,16 +406,16 @@ export const useGameStore = create<GameState>()(
               }
             });
           }
+          // Energy decreases by 15% after every CORRECT task
+          get().updatePlayer({
+            stamina: Math.max(0, p.stamina - ENERGY_COST_PER_TASK),
+            stats: {
+              ...p.stats,
+              energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK)
+            },
+            lastStaminaRegenAt: new Date()
+          });
         }
-
-        // Energy decreases by 9% after every task
-        get().updatePlayer({
-          stats: {
-            ...p.stats,
-            energy: Math.max(0, p.stats.energy - ENERGY_COST_PER_TASK)
-          },
-          lastStaminaRegenAt: new Date()
-        });
 
         // Lives decrease by one if wrong answer
         if (!result.passed) {
@@ -435,15 +435,41 @@ export const useGameStore = create<GameState>()(
 
       checkStaminaRegen: () => {
         const p = get().player;
-        if (!p || p.stamina >= MAX_STAMINA || !p.lastStaminaRegenAt) return;
+        if (!p) return;
         const now = new Date().getTime();
-        const last = new Date(p.lastStaminaRegenAt).getTime();
-        const pointsToRegen = Math.floor((now - last) / STAMINA_REGEN_TIME);
-        if (pointsToRegen > 0) {
-          get().updatePlayer({
-            stamina: Math.min(MAX_STAMINA, p.stamina + pointsToRegen),
-            lastStaminaRegenAt: pointsToRegen >= (MAX_STAMINA - p.stamina) ? null : new Date()
-          });
+        let updates: Partial<Player> = {};
+
+        // Energy Regen (10% every 15s)
+        if (p.stats.energy < MAX_STAMINA && p.lastStaminaRegenAt) {
+          const last = new Date(p.lastStaminaRegenAt).getTime();
+          const cycles = Math.floor((now - last) / STAMINA_REGEN_TIME);
+          if (cycles > 0) {
+            const newEnergy = Math.min(MAX_STAMINA, p.stats.energy + (cycles * ENERGY_REGEN_AMOUNT));
+            updates = {
+              ...updates,
+              stamina: newEnergy,
+              stats: { ...p.stats, energy: newEnergy },
+              lastStaminaRegenAt: newEnergy >= MAX_STAMINA ? null : new Date()
+            };
+          }
+        }
+
+        // Life Regen (1 life every 2 min)
+        if (p.lives < MAX_LIVES && p.lastLifeLostAt) {
+          const lastLife = new Date(p.lastLifeLostAt).getTime();
+          const lifeCycles = Math.floor((now - lastLife) / LIFE_REGEN_TIME);
+          if (lifeCycles > 0) {
+            const newLives = Math.min(MAX_LIVES, p.lives + lifeCycles);
+            updates = {
+              ...updates,
+              lives: newLives,
+              lastLifeLostAt: newLives >= MAX_LIVES ? null : new Date()
+            };
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          get().updatePlayer(updates);
         }
       },
 
@@ -589,7 +615,21 @@ export const useGameStore = create<GameState>()(
       },
       canPlay: () => {
         const { player: p, currentRoomId, isLevelUnlocked } = get();
-        if (!p || !currentRoomId) return true;
+        if (!p) return false;
+
+        // Energy Lock: If energy is 10% or lower
+        if (p.stats.energy <= 10 && !p.isPremium) {
+          toast.error("Energy depleted below critical levels (10%). Wait for recharge.");
+          return false;
+        }
+
+        // Lives Lock: If lives are 0
+        if (p.lives <= 0 && !p.isPremium) {
+          toast.error("All lives lost. Cooling down for 2 minutes.");
+          return false;
+        }
+
+        if (!currentRoomId) return true;
 
         // Find if any level in the current room is unlocked
         const levelsInRoom = GAME_LEVELS.filter(l => l.room === currentRoomId);

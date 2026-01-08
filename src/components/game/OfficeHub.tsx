@@ -112,7 +112,7 @@ export const OfficeHub: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       checkStaminaRegen();
-    }, 30000); // Check every 30s
+    }, 1000); // Check every 1s for precise regen and locks
     return () => clearInterval(timer);
   }, [checkStaminaRegen]);
 

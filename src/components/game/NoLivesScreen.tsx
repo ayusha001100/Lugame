@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { Button } from '@/components/ui/button';
-import { Heart, Clock, Crown, Sparkles } from 'lucide-react';
+import { Heart, Clock, Crown, Sparkles, Zap, Coins } from 'lucide-react';
 import { useAudio } from '@/hooks/useAudio';
 
 export const NoLivesScreen: React.FC = () => {
@@ -12,11 +12,26 @@ export const NoLivesScreen: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       checkStaminaRegen();
-      // Logic to calc time until stamina full or playable amount
-      // Simplified: just check if playable
-      if (player && (player.isPremium || player.stamina >= 10)) {
+      // Auto-return if resources recovered
+      if (player && (player.isPremium || (player.stats.energy > 10 && player.lives > 0))) {
         playSfx('success');
         setScreen('office-hub');
+      }
+
+      // Update local timer display
+      if (player) {
+        const now = new Date().getTime();
+        let target = 0;
+
+        if (player.lives === 0 && player.lastLifeLostAt) {
+          target = new Date(player.lastLifeLostAt).getTime() + (120 * 1000);
+        } else if (player.stats.energy <= 10 && player.lastStaminaRegenAt) {
+          target = new Date(player.lastStaminaRegenAt).getTime() + (15 * 1000);
+        }
+
+        if (target > 0) {
+          setTimeLeft(Math.max(0, target - now));
+        }
       }
     }, 1000);
 
@@ -49,9 +64,11 @@ export const NoLivesScreen: React.FC = () => {
           ))}
         </div>
 
-        <h1 className="text-4xl font-bold mb-4">Energy Depleted</h1>
+        <h1 className="text-4xl font-bold mb-4">Tactical Lock</h1>
         <p className="text-muted-foreground mb-8 leading-relaxed">
-          You've exhausted your tactical energy for now. Stamina regenerates over time (10 min per point), or you can use tokens to continue.
+          {player.lives <= 0
+            ? "Your status is critical. 2-minute recovery downtime required."
+            : "Energy depleted below 10%. Recalibrating internal systems (10% boost every 15s)."}
         </p>
 
         {/* Timer */}
