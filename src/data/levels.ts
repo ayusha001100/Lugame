@@ -283,6 +283,110 @@ export const GAME_LEVELS: GameLevel[] = [
     stipendReward: 500,
     isPremium: true,
     simulationImpact: { roas: 0.5, budgetSpent: 5000 },
+  },
+  {
+    id: 5,
+    title: "CONTENT GENESIS",
+    subtitle: "Storytelling Architecture",
+    description: "Structure narratives that drive conversion.",
+    room: 'content',
+    npcName: "Leo Vane",
+    npcRole: "Creative Director",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "Data tells you what happened. Stories make things happen. Let's see if you can write something humans actually want to read.",
+        emotion: 'excited'
+      }
+    ],
+    phases: [
+      {
+        id: 'phase-5-a',
+        type: 'diagnose',
+        title: "Narrative Arc",
+        description: "Identify the most compelling story structure.",
+        taskType: 'mcq',
+        evaluationMode: 'exact_match',
+        taskData: {
+          options: [
+            "Features -> Benefits -> Price",
+            "Problem -> Agitation -> Solution",
+            "History -> Mission -> Product",
+            "Team -> Technology -> Vision"
+          ],
+          correct: "Problem -> Agitation -> Solution"
+        },
+        taskPrompt: "Which narrative structure is most effective for a high-conversion landing page?",
+        stipendReward: 300
+      }
+    ],
+    difficulty: 'medium',
+    competencies: ["Storytelling", "Copywriting", "Creative Strategy"],
+    rubric: {
+      criteria: [{ name: "Structure", description: "Logical flow", weight: 100, examples: { good: "PAS Framework", bad: "Random facts" } }],
+      passingScore: 80,
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "Spot on. The PAS framework is a classic for a reason. It maps directly to human psychology.",
+        medium: "Acceptable, but don't just memorize frameworks. Understand WHY they work.",
+        low: "You're boring me. And if you bore me, you lose the customer. Try again."
+      }
+    },
+    xpReward: 350,
+    stipendReward: 400,
+    isPremium: false,
+    simulationImpact: { leads: 100, conversionRate: 0.5 },
+  },
+  {
+    id: 6,
+    title: "VIRAL MECHANICS",
+    subtitle: "Engagement Engineering",
+    description: "Design content loops that trigger organic sharing.",
+    room: 'content',
+    npcName: "Leo Vane",
+    npcRole: "Creative Director",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "Virality isn't luck. It's engineering. Show me you understand the psychology of sharing.",
+        emotion: 'thinking'
+      }
+    ],
+    phases: [
+      {
+        id: 'phase-6-a',
+        type: 'build',
+        title: "Share Trigger",
+        description: "Draft a tweet optimized for retweets.",
+        taskType: 'short-answer',
+        evaluationMode: 'ai_semantic',
+        taskData: {
+          criteria: ["polarization", "conciseness", "relevance"]
+        },
+        taskPrompt: "Write a controversial yet professional tweet about 'AI replacing Junior Marketers' designed to spark debate.",
+        stipendReward: 500
+      }
+    ],
+    difficulty: 'hard',
+    competencies: ["Viral Marketing", "Social Psychology", "Trend Analysis"],
+    rubric: {
+      criteria: [
+        { name: "Polarization", description: "Takes a strong stance", weight: 40, examples: { good: "Definitive opinion", bad: "Neutral statement" } },
+        { name: "Conciseness", description: "Punchy and readable", weight: 30, examples: { good: "Under 280 chars", bad: "Essay" } },
+        { name: "Relevance", description: "Topical and timely", weight: 30, examples: { good: "Industry debate", bad: "Obscure topic" } }
+      ],
+      passingScore: 75,
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "That's going to burn down the timeline. Perfect. Engagement is engagement.",
+        medium: "Safe. Too safe. You want to be a thought leader? Have a thought.",
+        low: "This reads like a press release. Nobody retweets press releases."
+      }
+    },
+    xpReward: 500,
+    stipendReward: 600,
+    isPremium: true,
+    simulationImpact: { leads: 500, reputation: 5 },
   }
 ];
 

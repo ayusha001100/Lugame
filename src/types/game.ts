@@ -73,7 +73,8 @@ export interface MarketingKPIs {
   leads: number;
   budgetSpent: number;
   revenue: number; // Added for Simulation (Module 8)
-  stipend: number; // Added based on UI mockup
+  stipend: number;
+  reputation?: number;
 }
 
 export interface WorldState {
