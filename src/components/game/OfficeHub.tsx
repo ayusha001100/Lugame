@@ -526,9 +526,9 @@ export const OfficeHub: React.FC = () => {
         {/* DEPARTMENT GRID */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {OFFICE_ROOMS.map((room, index) => {
-            const roomLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
-            const completedInRoom = roomLevels.filter(l => player.completedLevels.includes(l.id)).length;
-            const isUnlocked = true; // Everything Unlocked for all
+            const departmentLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
+            const completedInRoom = departmentLevels.filter(l => player.completedLevels.includes(l.id)).length;
+            const isUnlocked = departmentLevels.some(l => isLevelUnlocked(l.id));
 
             return (
               <motion.button
@@ -542,12 +542,15 @@ export const OfficeHub: React.FC = () => {
                   "room-card text-left p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border-2 transition-all duration-500 relative overflow-hidden group shadow-xl",
                   isUnlocked
                     ? "bg-card border-border hover:border-primary shadow-primary/5"
-                    : "bg-muted/50 border-transparent opacity-60 grayscale cursor-not-allowed"
+                    : "bg-muted/80 border-transparent opacity-90 cursor-not-allowed overflow-hidden"
                 )}
               >
                 {!isUnlocked && (
-                  <div className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-xl bg-background/50 backdrop-blur-md">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                    <div className="bg-background/80 p-4 rounded-2xl flex flex-col items-center gap-2 border border-white/10 shadow-2xl">
+                      <ShieldCheck className="w-8 h-8 text-primary/40" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Calibration Required</span>
+                    </div>
                   </div>
                 )}
 
@@ -567,13 +570,13 @@ export const OfficeHub: React.FC = () => {
                   <div className="space-y-3 md:space-y-4">
                     <div className="flex justify-between items-end text-[9px] md:text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                       <span>Sync Progress</span>
-                      <span className="text-primary">{Math.round((completedInRoom / (roomLevels.length || 1)) * 100)}%</span>
+                      <span className="text-primary">{Math.round((completedInRoom / (departmentLevels.length || 1)) * 100)}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-muted/30 rounded-full overflow-hidden">
                       <motion.div
                         className="h-full bg-primary shadow-[0_0_10px_rgba(234,179,8,0.3)]"
                         initial={{ width: 0 }}
-                        animate={{ width: `${(completedInRoom / (roomLevels.length || 1)) * 100}%` }}
+                        animate={{ width: `${(completedInRoom / (departmentLevels.length || 1)) * 100}%` }}
                       />
                     </div>
                   </div>

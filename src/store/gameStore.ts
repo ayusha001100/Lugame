@@ -559,7 +559,11 @@ export const useGameStore = create<GameState>()(
       clearPendingAchievement: () => set({ pendingAchievement: null }),
       checkAchievements: () => { },
       isLevelUnlocked: (levelId) => {
-        return true; // Unlock everything for all
+        const p = get().player;
+        if (!p) return false;
+        if (levelId === 1) return true;
+        // Level is unlocked if the previous one is completed
+        return p.completedLevels.includes(levelId - 1);
       },
       retryLevel: () => {
         const { player: p, useToken, consumeStamina, resetAttempt, setScreen } = get();
@@ -584,7 +588,12 @@ export const useGameStore = create<GameState>()(
         toast.success("Lesson Complete! +1 Retry Token Earned.");
       },
       canPlay: () => {
-        return true; // Unlock everything for all
+        const { player: p, currentRoomId, isLevelUnlocked } = get();
+        if (!p || !currentRoomId) return true;
+
+        // Find if any level in the current room is unlocked
+        const levelsInRoom = GAME_LEVELS.filter(l => l.room === currentRoomId);
+        return levelsInRoom.some(l => isLevelUnlocked(l.id));
       },
       useAIToken: (levelId) => {
         const p = get().player;
