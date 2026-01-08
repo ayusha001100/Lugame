@@ -39,10 +39,10 @@ export const NoLivesScreen: React.FC = () => {
   }, [checkStaminaRegen, player, setScreen, playSfx]);
 
   const formatTime = (ms: number) => {
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -57,9 +57,9 @@ export const NoLivesScreen: React.FC = () => {
         {/* Hearts Display */}
         <div className="flex justify-center gap-3 mb-8">
           {[...Array(3)].map((_, i) => (
-            <Zap
+            <Heart
               key={i}
-              className="w-12 h-12 text-muted-foreground/20"
+              className={`w-12 h-12 ${i < player.lives ? 'text-red-500 fill-red-500' : 'text-muted-foreground/20'}`}
             />
           ))}
         </div>

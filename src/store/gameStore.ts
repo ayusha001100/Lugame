@@ -316,13 +316,10 @@ export const useGameStore = create<GameState>()(
         const p = state.player;
         if (!p) return;
 
-        // 1 minute real time = 1 hour game time
-        // This tick should be called every 1 second real time
-        // So 1 second real time = 1 minute game time
+        // Game Time progression
         const currentMins = parseTimeToMinutes(state.gameTime);
         const nextMins = currentMins + 1;
         const newTimeStr = formatTime(nextMins);
-
         const isResting = nextMins >= 22 * 60 || nextMins < 9 * 60; // 10 PM to 9 AM
 
         set({ gameTime: newTimeStr, isResting });
@@ -333,47 +330,15 @@ export const useGameStore = create<GameState>()(
           toast.info("It's 10 PM! Time to head home.");
         }
 
-        // Regen Logic
+        // Consolidated Regeneration Logic
         state.checkStaminaRegen();
 
-        // Life Regen if lives < MAX_LIVES
-        if (p.lives < MAX_LIVES && p.lastLifeLostAt) {
-          const now = new Date().getTime();
-          const last = new Date(p.lastLifeLostAt).getTime();
-          if (now - last >= LIFE_REGEN_TIME) {
-            get().updatePlayer({
-              lives: p.lives + 1,
-              lastLifeLostAt: p.lives + 1 >= MAX_LIVES ? null : new Date()
-            });
-          }
-        }
+        // Screen Lock Check: Redirect if energy <= 10 or lives <= 0, and not already on lock screens
+        const isCritical = (p.stats.energy <= 10 || p.lives <= 0) && !p.isPremium;
+        const protectedScreens = ['splash', 'auth', 'character-creation', 'no-lives', 'premium', 'portfolio'];
 
-        // Energy/Stamina slow regen during day
-        if (p.stats.energy < 100) {
-          const now = new Date().getTime();
-          const last = p.lastStaminaRegenAt ? new Date(p.lastStaminaRegenAt).getTime() : now;
-          if (!p.lastStaminaRegenAt) {
-            get().updatePlayer({ lastStaminaRegenAt: new Date() });
-          } else if (now - last >= STAMINA_REGEN_TIME) {
-            get().updatePlayer({
-              stats: {
-                ...p.stats,
-                energy: Math.min(100, p.stats.energy + ENERGY_REGEN_AMOUNT)
-              },
-              stamina: Math.min(MAX_STAMINA, p.stamina + ENERGY_REGEN_AMOUNT),
-              lastStaminaRegenAt: p.stats.energy + ENERGY_REGEN_AMOUNT >= 100 ? null : new Date()
-            });
-          }
-        }
-
-        // Energy faster regen during rest
-        if (isResting && p.stats.energy < 100) {
-          get().updatePlayer({
-            stats: {
-              ...p.stats,
-              energy: Math.min(100, p.stats.energy + 5) // Faster regen at night
-            }
-          });
+        if (isCritical && !protectedScreens.includes(state.currentScreen)) {
+          set({ currentScreen: 'no-lives' });
         }
       },
 
@@ -440,31 +405,39 @@ export const useGameStore = create<GameState>()(
         let updates: Partial<Player> = {};
 
         // Energy Regen (10% every 15s)
-        if (p.stats.energy < MAX_STAMINA && p.lastStaminaRegenAt) {
-          const last = new Date(p.lastStaminaRegenAt).getTime();
-          const cycles = Math.floor((now - last) / STAMINA_REGEN_TIME);
-          if (cycles > 0) {
-            const newEnergy = Math.min(MAX_STAMINA, p.stats.energy + (cycles * ENERGY_REGEN_AMOUNT));
-            updates = {
-              ...updates,
-              stamina: newEnergy,
-              stats: { ...p.stats, energy: newEnergy },
-              lastStaminaRegenAt: newEnergy >= MAX_STAMINA ? null : new Date()
-            };
+        if (p.stats.energy < MAX_STAMINA) {
+          if (!p.lastStaminaRegenAt) {
+            updates.lastStaminaRegenAt = new Date();
+          } else {
+            const last = new Date(p.lastStaminaRegenAt).getTime();
+            const cycles = Math.floor((now - last) / STAMINA_REGEN_TIME);
+            if (cycles > 0) {
+              const newEnergy = Math.min(MAX_STAMINA, p.stats.energy + (cycles * ENERGY_REGEN_AMOUNT));
+              updates = {
+                ...updates,
+                stamina: newEnergy,
+                stats: { ...p.stats, energy: newEnergy },
+                lastStaminaRegenAt: newEnergy >= MAX_STAMINA ? null : new Date()
+              };
+            }
           }
         }
 
         // Life Regen (1 life every 2 min)
-        if (p.lives < MAX_LIVES && p.lastLifeLostAt) {
-          const lastLife = new Date(p.lastLifeLostAt).getTime();
-          const lifeCycles = Math.floor((now - lastLife) / LIFE_REGEN_TIME);
-          if (lifeCycles > 0) {
-            const newLives = Math.min(MAX_LIVES, p.lives + lifeCycles);
-            updates = {
-              ...updates,
-              lives: newLives,
-              lastLifeLostAt: newLives >= MAX_LIVES ? null : new Date()
-            };
+        if (p.lives < MAX_LIVES) {
+          if (!p.lastLifeLostAt) {
+            updates.lastLifeLostAt = new Date();
+          } else {
+            const lastLife = new Date(p.lastLifeLostAt).getTime();
+            const lifeCycles = Math.floor((now - lastLife) / LIFE_REGEN_TIME);
+            if (lifeCycles > 0) {
+              const newLives = Math.min(MAX_LIVES, p.lives + lifeCycles);
+              updates = {
+                ...updates,
+                lives: newLives,
+                lastLifeLostAt: newLives >= MAX_LIVES ? null : new Date()
+              };
+            }
           }
         }
 

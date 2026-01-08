@@ -17,7 +17,8 @@ export const SplashScreen: React.FC = () => {
   const handleStart = () => {
     playSfx('click');
     if (player) {
-      if (player.lives > 0 || player.isPremium) {
+      const isCritical = (player.lives <= 0 || (player.stats.energy <= 10)) && !player.isPremium;
+      if (!isCritical) {
         setScreen((player.worldState?.lastActiveScreen as any) || 'office-hub');
       } else {
         setScreen('no-lives');
