@@ -39,6 +39,7 @@ interface GameState {
   setFirebaseUser: (user: User | null) => void;
   fetchPlayerProfile: (uid: string) => Promise<void>;
   savePlayerProfile: () => Promise<void>;
+  saveSessionSnapshot: () => void;
 
   // Navigation
   setScreen: (screen: GameScreen) => void;
@@ -181,6 +182,21 @@ export const useGameStore = create<GameState>()(
         get().savePlayerProfile();
       },
 
+      saveSessionSnapshot: () => {
+        const { player, currentScreen, currentRoomId, currentLevelId, activePhaseIndex } = get();
+        if (!player) return;
+
+        get().updatePlayer({
+          worldState: {
+            ...player.worldState,
+            lastActiveScreen: currentScreen,
+            lastActiveRoomId: currentRoomId,
+            lastActiveLevelId: currentLevelId,
+            lastActivePhaseIndex: activePhaseIndex
+          }
+        });
+      },
+
       setFirebaseUser: (user) => set({ firebaseUser: user }),
 
       fetchPlayerProfile: async (uid) => {
@@ -188,7 +204,19 @@ export const useGameStore = create<GameState>()(
           const docRef = doc(db, 'players', uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            set({ player: docSnap.data() as Player });
+            const playerData = docSnap.data() as Player;
+            set({ player: playerData });
+
+            // Restore Session Snapshot
+            if (playerData.worldState?.lastActiveScreen) {
+              set({
+                currentScreen: playerData.worldState.lastActiveScreen as any,
+                currentRoomId: playerData.worldState.lastActiveRoomId || null,
+                currentLevelId: playerData.worldState.lastActiveLevelId || null,
+                activePhaseIndex: playerData.worldState.lastActivePhaseIndex || 0
+              });
+              toast.info("Resuming your last session...");
+            }
           }
         } catch (error) {
           console.error('Error fetching player profile:', error);
@@ -361,14 +389,23 @@ export const useGameStore = create<GameState>()(
         const level = GAME_LEVELS.find(l => l.id === levelId);
         const phase = level?.phases?.find(ph => ph.id === phaseId);
 
-        if (result.passed && phase?.stipendReward) {
-          get().addStipend(phase.stipendReward);
-        }
-
-        // Award 1 credit per successful phase
         if (result.passed) {
+          if (phase?.stipendReward) {
+            get().addStipend(phase.stipendReward);
+          }
           get().addTokens(1);
           toast.success("Mission Intel synced. +1 Credit earned.");
+
+          // Persist phase completion
+          const currentCompleted = p.completedPhases?.[levelId] || [];
+          if (!currentCompleted.includes(phaseId)) {
+            get().updatePlayer({
+              completedPhases: {
+                ...(p.completedPhases || {}),
+                [levelId]: [...currentCompleted, phaseId]
+              }
+            });
+          }
         }
 
         // Energy decreases by 9% after every task
@@ -471,11 +508,48 @@ export const useGameStore = create<GameState>()(
         get().checkAchievements(portfolioItem.score, isFirstTry);
       },
 
-      setScreen: (screen) => set({ currentScreen: screen }),
-      setCurrentLevel: (levelId) => set({ currentLevelId: levelId, currentAttempt: 1, activePhaseIndex: 0, lastEvaluation: null }),
-      setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
-      setActivePhaseIndex: (index) => set({ activePhaseIndex: index }),
-      nextPhase: () => set((state) => ({ activePhaseIndex: state.activePhaseIndex + 1, lastEvaluation: null })),
+      setScreen: (screen) => {
+        set({ currentScreen: screen });
+        get().saveSessionSnapshot();
+      },
+      setCurrentLevel: (levelId) => {
+        const p = get().player;
+        let startIndex = 0;
+
+        if (p && levelId !== null) {
+          const level = GAME_LEVELS.find(l => l.id === levelId);
+          if (level?.phases) {
+            const completed = p.completedPhases?.[levelId] || [];
+            // Resume from the first incomplete phase
+            const firstIncomplete = level.phases.findIndex(ph => !completed.includes(ph.id));
+            if (firstIncomplete !== -1) {
+              startIndex = firstIncomplete;
+            } else {
+              startIndex = level.phases.length - 1; // Show last phase/completed state
+            }
+          }
+        }
+
+        set({
+          currentLevelId: levelId,
+          currentAttempt: 1,
+          activePhaseIndex: startIndex,
+          lastEvaluation: null
+        });
+        get().saveSessionSnapshot();
+      },
+      setCurrentRoom: (roomId) => {
+        set({ currentRoomId: roomId });
+        get().saveSessionSnapshot();
+      },
+      setActivePhaseIndex: (index) => {
+        set({ activePhaseIndex: index });
+        get().saveSessionSnapshot();
+      },
+      nextPhase: () => {
+        set((state) => ({ activePhaseIndex: state.activePhaseIndex + 1, lastEvaluation: null }));
+        get().saveSessionSnapshot();
+      },
       setEvaluation: (result) => set({ lastEvaluation: result }),
       incrementAttempt: () => set((state) => ({ currentAttempt: state.currentAttempt + 1 })),
       resetAttempt: () => set({ currentAttempt: 1 }),

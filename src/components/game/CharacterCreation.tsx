@@ -70,6 +70,7 @@ export const CharacterCreation: React.FC = () => {
       xp: 0,
       level: 1,
       completedLevels: [],
+      completedPhases: {},
       portfolio: [],
       createdAt: new Date(),
 

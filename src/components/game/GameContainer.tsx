@@ -19,6 +19,8 @@ import { CertificationView } from './CertificationView';
 import { AIAssistant } from './AIAssistant';
 import { BackgroundMusic } from './BackgroundMusic';
 
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { AuthView } from './AuthView';
 
 export const GameContainer: React.FC = () => {
@@ -27,8 +29,20 @@ export const GameContainer: React.FC = () => {
     currentLevelId,
     player,
     setScreen,
-    tick
+    tick,
+    setFirebaseUser,
+    fetchPlayerProfile
   } = useGameStore();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        fetchPlayerProfile(user.uid);
+      }
+    });
+    return () => unsubscribe();
+  }, [setFirebaseUser, fetchPlayerProfile]);
 
   useEffect(() => {
     if (!player) return;
@@ -85,9 +99,9 @@ export const GameContainer: React.FC = () => {
       <BackgroundMusic />
       {renderScreen()}
       {player && (currentScreen === 'office-hub' || currentScreen === 'room' || currentScreen === 'level') && (
-        <AIAssistant 
-          levelId={currentLevelId || (player.completedLevels.length + 1)} 
-          taskPrompt={GAME_LEVELS.find(l => l.id === currentLevelId)?.taskPrompt || "Strategic consultation requested."} 
+        <AIAssistant
+          levelId={currentLevelId || (player.completedLevels.length + 1)}
+          taskPrompt={GAME_LEVELS.find(l => l.id === currentLevelId)?.taskPrompt || "Strategic consultation requested."}
         />
       )}
     </div>

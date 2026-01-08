@@ -26,95 +26,68 @@ export const GAME_LEVELS: GameLevel[] = [
       {
         id: 'phase-1-a',
         type: 'diagnose',
-        title: "Mission 01: MCQ 1",
-        description: "Primary goal of launch messaging",
+        title: "Mission 01: Value Extraction",
+        description: "Spot the core value proposition.",
         taskType: 'mcq',
+        evaluationMode: 'exact_match',
         taskData: {
           options: [
-            "Sound creative",
-            "Explain every feature",
-            "Communicate core value clearly",
-            "Match competitor tone"
+            "Welcome to NovaMind",
+            "NovaMind: The Future Is Here",
+            "Finish 3x More Work With AI Assistance",
+            "An AI Platform for Everyone"
           ],
-          correct: "Communicate core value clearly"
+          correct: "Finish 3x More Work With AI Assistance"
         },
-        taskPrompt: "What is the PRIMARY goal of launch messaging?",
+        taskPrompt: "Which headline best communicates tangible value to our target users?",
         stipendReward: 100,
       },
       {
         id: 'phase-1-b',
-        type: 'diagnose',
-        title: "Mission 01: MCQ 2",
-        description: "Strong headline focus",
-        taskType: 'mcq',
+        type: 'build',
+        title: "Mission 02: Audience Resonator",
+        description: "Draft a headline for a specific segment.",
+        taskType: 'short-answer',
+        evaluationMode: 'ai_semantic',
         taskData: {
-          options: [
-            "Brand history",
-            "User benefit",
-            "Internal vision",
-            "Pricing"
-          ],
-          correct: "User benefit"
+          criteria: ["clarity", "audience_fit", "simplicity"]
         },
-        taskPrompt: "A strong headline should focus on:",
-        stipendReward: 100,
+        taskPrompt: "Write a simple, 1-sentence headline for NovaMind specifically targeting 'Overwhelmed College Students' before finals week.",
+        stipendReward: 150,
       },
       {
         id: 'phase-1-c',
         type: 'diagnose',
-        title: "Mission 01: MCQ 3",
-        description: "Audience insight",
-        taskType: 'mcq',
+        title: "Mission 03: Intent Mapping",
+        description: "Match headlines to user intent.",
+        taskType: 'match-following',
+        evaluationMode: 'pair_match',
         taskData: {
-          options: [
-            "Age only",
-            "Job title",
-            "Pain point",
-            "Location"
-          ],
-          correct: "Pain point"
+          pairs: [
+            { left: "How AI Automates Your Filing", right: "Educational/Awareness" },
+            { left: "Get Started Free Today", right: "Action/Conversion" },
+            { left: "Why NovaMind Beats Manual Entry", right: "Comparison/Interest" }
+          ]
         },
-        taskPrompt: "Which audience insight matters MOST for copy?",
-        stipendReward: 100,
-      },
-      {
-        id: 'phase-1-d',
-        type: 'build',
-        title: "Mission 01: Fill 1",
-        description: "Messaging criteria",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "Messaging should be clear, concise, and {0}.",
-          chips: ["Relevant", "Abstract", "Technical", "Long"],
-          correct: ["Relevant"]
-        },
-        taskPrompt: "Complete the statement about effective messaging.",
-        stipendReward: 100,
-      },
-      {
-        id: 'phase-1-e',
-        type: 'build',
-        title: "Mission 01: Fill 2",
-        description: "CTA purpose",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "A CTA tells the user what to do {0}.",
-          chips: ["Next", "Yesterday", "Never", "Randomly"],
-          correct: ["Next"]
-        },
-        taskPrompt: "What does a CTA tell the user?",
-        stipendReward: 100,
+        taskPrompt: "Match the following headlines to their appropriate stage in the customer journey.",
+        stipendReward: 200,
       }
     ],
     difficulty: 'easy',
-    competencies: ["Copywriting", "Messaging"],
+    competencies: ["Copywriting", "Messaging", "Consumer Psychology"],
     rubric: {
       criteria: [
-        { name: "Clarity", description: "Clear communication of value", weight: 50, examples: { good: "Direct benefit", bad: "Vague features" } },
-        { name: "Engagement", description: "Hooking the audience", weight: 50, examples: { good: "Pain point focus", bad: "Generic tone" } }
+        { name: "Clarity", description: "Clear communication of value", weight: 40, examples: { good: "Direct benefit", bad: "Vague features" } },
+        { name: "Audience Fit", description: "Relevance to the target segment", weight: 30, examples: { good: "Student-focused", bad: "Corporate jargon" } },
+        { name: "Simplicity", description: "Concise and impact-driven", weight: 30, examples: { good: "Under 10 words", bad: "Run-on sentences" } }
       ],
       passingScore: 70,
-      maxAttempts: 3
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "Strong clarity. You’re thinking in outcomes, not words. That’s how strategists operate. Proceed.",
+        medium: "Decent work. Your thinking is right, but your execution needs tightening. Refine your messaging and move forward.",
+        low: "This doesn’t communicate value clearly. Rethink the user’s problem first — then write."
+      }
     },
     xpReward: 300,
     stipendReward: 500,
@@ -124,65 +97,67 @@ export const GAME_LEVELS: GameLevel[] = [
   {
     id: 2,
     title: "STRATEGY CALIBRATION",
-    subtitle: "MCQ Assessment",
-    description: "Ensure intern understands strategic thinking.",
+    subtitle: "Strategic Frameworks",
+    description: "Align your tactical decisions with high-level business goals.",
     room: 'marketing',
     npcName: "Sarah Chen",
     npcRole: "Marketing Manager",
     npcDialogue: [
       {
         id: 'start',
-        text: "Strategy comes before execution. Let's see if you've got the mindset.",
+        text: "Strategy comes before execution. Let's see if you can handle the complexity of a multi-variable launch.",
         emotion: 'thinking'
       }
     ],
     phases: [
       {
-        id: 'phase-4-a',
+        id: 'phase-2-a',
         type: 'diagnose',
-        title: "Strategy Choice",
-        description: "Why strategy first?",
+        title: "Directional Audit",
+        description: "Identify the strategic missing link.",
         taskType: 'mcq',
+        evaluationMode: 'exact_match',
         taskData: {
-          options: ["Budget", "Tools", "Direction", "Creatives"],
-          correct: "Direction"
+          options: ["Budget Constraints", "Competitive Tools", "North Star Direction", "Creative Assets"],
+          correct: "North Star Direction"
         },
-        taskPrompt: "Strategy comes BEFORE execution because it defines:",
+        taskPrompt: "A campaign is failing despite high clicks and low CPC. What is most likely missing from the original strategy?",
         stipendReward: 100
       },
       {
-        id: 'phase-4-b',
-        type: 'diagnose',
-        title: "KPI Importance",
-        description: "Campaign without KPIs",
-        taskType: 'mcq',
+        id: 'phase-2-b',
+        type: 'build',
+        title: "Variable Positioning",
+        description: "Create a positioning statement under constraints.",
+        taskType: 'variable-writing',
+        evaluationMode: 'ai_contextual',
         taskData: {
-          options: ["Flexible", "Creative", "Unmeasurable", "Agile"],
-          correct: "Unmeasurable"
+          variables: {
+            competitor: "Zapier",
+            audience: "Startup Founders",
+            pain_point: "Tool Overload"
+          },
+          criteria: ["positioning", "differentiation", "clarity"]
         },
-        taskPrompt: "A campaign without KPIs is:",
-        stipendReward: 100
-      },
-      {
-        id: 'phase-4-c',
-        type: 'diagnose',
-        title: "Audience Definition",
-        description: "Reducing noise",
-        taskType: 'mcq',
-        taskData: {
-          options: ["Reach", "Cost", "Confusion", "Creativity"],
-          correct: "Confusion"
-        },
-        taskPrompt: "Target audience definition helps reduce:",
-        stipendReward: 100
+        taskPrompt: "Based on the variables provided, draft a 1-sentence value proposition that separates NovaMind from the competitor while solving the specific pain point.",
+        stipendReward: 200
       }
     ],
-    difficulty: 'easy',
-    competencies: ["Strategic Thinking", "Funnel Strategy"],
+    difficulty: 'medium',
+    competencies: ["Strategic Thinking", "Positioning", "Competitive Analysis"],
     rubric: {
-      criteria: [{ name: "Accuracy", description: "Correct selection", weight: 100, examples: { good: "Correct", bad: "Incorrect" } }],
-      passingScore: 70,
-      maxAttempts: 3
+      criteria: [
+        { name: "Positioning", description: "Unique angle against competitors", weight: 40, examples: { good: "Better than X because Y", bad: "We are good" } },
+        { name: "Differentiation", description: "Clear unique selling point", weight: 30, examples: { good: "All-in-one vs modular", bad: "Just like them" } },
+        { name: "Clarity", description: "Ability to explain complex strategy simply", weight: 30, examples: { good: "Simple solution", bad: "Word salad" } }
+      ],
+      passingScore: 75,
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "You're thinking beyond campaigns — you're thinking business. This is high-level stuff.",
+        medium: "Logical approach, but watch your margins. The differentiation could be sharper.",
+        low: "This feels tactical. Come back when your thinking scales to the entire business model."
+      }
     },
     xpReward: 150,
     stipendReward: 300,
@@ -193,92 +168,64 @@ export const GAME_LEVELS: GameLevel[] = [
     id: 3,
     title: "THE HOOK ARENA",
     subtitle: "Ad Creative Swipe",
-    description: "Identify high-performing hooks.",
+    description: "Identify high-performing hooks that stop the scroll.",
     room: 'ads',
     npcName: "Marcus Rivera",
     npcRole: "Paid Media Lead",
     npcDialogue: [
       {
         id: 'start',
-        text: "In ads, the hook is everything. You have 3 seconds to catch them.",
+        text: "In ads, the hook is everything. You have 3 seconds to catch them or you're burning my budget.",
         emotion: 'excited'
       }
     ],
     phases: [
       {
-        id: 'phase-2-a',
+        id: 'phase-3-a',
         type: 'diagnose',
-        title: "Hook Purpose",
-        description: "What is a hook?",
+        title: "Stop the Scroll",
+        description: "Identify the strongest pattern interrupt.",
         taskType: 'mcq',
+        evaluationMode: 'exact_match',
         taskData: {
-          options: ["Explain product", "Capture attention instantly", "Show branding", "Add creativity"],
-          correct: "Capture attention instantly"
+          options: [
+            "Meet NovaMind: The AI tool",
+            "Stop wasting 4 hours a week on filing",
+            "We are the #1 rated AI app",
+            "Get the trial version now"
+          ],
+          correct: "Stop wasting 4 hours a week on filing"
         },
-        taskPrompt: "A “hook” in ads is meant to:",
-        stipendReward: 50
+        taskPrompt: "Which of these hooks uses a 'Pattern Interrupt' based on a specific user pain point?",
+        stipendReward: 100
       },
       {
-        id: 'phase-2-b',
-        type: 'diagnose',
-        title: "Cold Audiences",
-        description: "Best style for cold traffic",
-        taskType: 'mcq',
+        id: 'phase-3-b',
+        type: 'improve',
+        title: "A/B Hook Calibration",
+        description: "Predict the winning hook variation.",
+        taskType: 'ab-test',
+        evaluationMode: 'exact_match',
         taskData: {
-          options: ["Feature list", "Problem-based opening", "Long storytelling", "Testimonials"],
-          correct: "Problem-based opening"
+          variationA: "Tired of manual data entry?",
+          variationB: "How I automated my entire startup in 10 minutes",
+          winningReason: "B uses curiosity and a personal transformation narrative, which typically out-performs standard pain-point questions in cold traffic."
         },
-        taskPrompt: "Best hook style for cold audiences:",
-        stipendReward: 50
-      },
-      {
-        id: 'phase-2-c',
-        type: 'diagnose',
-        title: "Scroll Stopping",
-        description: "Ad focus",
-        taskType: 'mcq',
-        taskData: {
-          options: ["Logo", "Headline", "Hook", "CTA"],
-          correct: "Hook"
-        },
-        taskPrompt: "Scroll-stopping ads focus MOST on:",
-        stipendReward: 50
-      },
-      {
-        id: 'phase-2-d',
-        type: 'build',
-        title: "Performance Window",
-        description: "Time to decide",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "The first {0} seconds decide ad performance.",
-          chips: ["3", "10", "30", "60"],
-          correct: ["3"]
-        },
-        taskPrompt: "How long do you have to hook a user?",
-        stipendReward: 50
-      },
-      {
-        id: 'phase-2-e',
-        type: 'build',
-        title: "Testing Hooks",
-        description: "Methodology",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "Hooks are tested using {0} testing.",
-          chips: ["A/B", "Beta", "Gamma", "Unit"],
-          correct: ["A/B"]
-        },
-        taskPrompt: "Select the testing method for hooks.",
-        stipendReward: 50
+        taskPrompt: "Between these two variations for a TikTok ad, which one is likely to have a higher CTR for cold traffic?",
+        stipendReward: 150
       }
     ],
     difficulty: 'easy',
-    competencies: ["Ad Creative", "Consumer Psychology"],
+    competencies: ["Ad Creative", "Consumer Psychology", "Data Interpretation"],
     rubric: {
-      criteria: [{ name: "Accuracy", description: "Correct identification", weight: 100, examples: { good: "5/5", bad: "0/5" } }],
+      criteria: [{ name: "Accuracy", description: "Correct identification of winners", weight: 100, examples: { good: "100%", bad: "0%" } }],
       passingScore: 70,
-      maxAttempts: 3
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "That hook would stop a scroll. You’re learning how money actually moves in ads. Great eye.",
+        medium: "The idea is there, but it’s not sharp enough. Ads punish hesitation. Be bolder with your creative swings.",
+        low: "This wouldn’t survive a real ad account. Test again — data doesn’t forgive guesses."
+      }
     },
     xpReward: 250,
     stipendReward: 250,
@@ -288,201 +235,53 @@ export const GAME_LEVELS: GameLevel[] = [
   {
     id: 4,
     title: "BUDGET BATTLEFIELD",
-    subtitle: "Budget Allocation Simulation",
-    description: "Make profit-driven decisions under constraints.",
+    subtitle: "Performance Scaling",
+    description: "Make profit-driven decisions under extreme constraints.",
     room: 'ads',
     npcName: "Marcus Rivera",
     npcRole: "Paid Media Lead",
     npcDialogue: [
       {
         id: 'start',
-        text: "Money talks. Let's see if you can scale without breaking the bank.",
+        text: "Money talks. Let's see if you can scale without breaking the algorithm's learning phase.",
         emotion: 'serious'
       }
     ],
     phases: [
       {
-        id: 'phase-6-a',
-        type: 'diagnose',
-        title: "Scaling Budget",
-        description: "When to increase spend",
-        taskType: 'mcq',
+        id: 'phase-4-a',
+        type: 'assessment',
+        title: "Scaling Logic",
+        description: "Match the metric to the action.",
+        taskType: 'match-following',
+        evaluationMode: 'pair_match',
         taskData: {
-          options: ["CTR is high", "CPM is low", "ROAS is profitable", "Frequency increases"],
-          correct: "ROAS is profitable"
+          pairs: [
+            { left: "ROAS > 4.0", right: "Increase Budget by 20%" },
+            { left: "Frequency > 3.0", right: "Refresh Creative Assets" },
+            { left: "CTR < 0.5%", right: "Kill Ad Set Immediately" }
+          ]
         },
-        taskPrompt: "Budget should be increased when:",
-        stipendReward: 100
-      },
-      {
-        id: 'phase-6-b',
-        type: 'diagnose',
-        title: "Killing Ad Sets",
-        description: "Termination criteria",
-        taskType: 'mcq',
-        taskData: {
-          options: ["It’s new", "It has low impressions", "It consistently loses money", "It has low likes"],
-          correct: "It consistently loses money"
-        },
-        taskPrompt: "Killing an ad set is justified when:",
-        stipendReward: 100
-      },
-      {
-        id: 'phase-6-c',
-        type: 'diagnose',
-        title: "Risk Reduction",
-        description: "Diversifying spend",
-        taskType: 'mcq',
-        taskData: {
-          options: ["Creativity", "Risk", "Reach", "Control"],
-          correct: "Risk"
-        },
-        taskPrompt: "Diversifying spend helps reduce:",
-        stipendReward: 100
-      },
-      {
-        id: 'phase-6-d',
-        type: 'build',
-        title: "Data vs Emotions",
-        description: "Decision making",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "Budget decisions should be based on {0} not emotions.",
-          chips: ["Data", "Hype", "Opinion", "Hope"],
-          correct: ["Data"]
-        },
-        taskPrompt: "What should guide budget decisions?",
-        stipendReward: 100
-      },
-      {
-        id: 'phase-6-e',
-        type: 'build',
-        title: "Scaling Hazards",
-        description: "Potential breakage",
-        taskType: 'fill-blanks',
-        taskData: {
-          text: "Scaling too fast can break ad {0}.",
-          chips: ["Performance", "Layout", "Logo", "Servers"],
-          correct: ["Performance"]
-        },
-        taskPrompt: "What can break if you scale too fast?",
-        stipendReward: 100
+        taskPrompt: "Match the ad performance data points on the left with the correct strategic action on the right.",
+        stipendReward: 200
       }
     ],
     difficulty: 'hard',
-    competencies: ["Media Planning", "Budget Allocation", "Performance Marketing"],
+    competencies: ["Media Planning", "Budget Allocation", "Data Analysis"],
     rubric: {
       criteria: [{ name: "Decision Logic", description: "Profit-driven choices", weight: 100, examples: { good: "Scaling ROAS", bad: "Spending on ego" } }],
-      passingScore: 70,
-      maxAttempts: 2
+      passingScore: 80,
+      maxAttempts: 2,
+      feedbackDialogues: {
+        high: "Excellent. You handled the scaling without triggering the 'auction overlap' warning. You're ready for bigger budgets.",
+        medium: "You escaped with a profit, but you left money on the table. Watch those frequency metrics closer.",
+        low: "You just burned $500 in 30 minutes. Rethink your scaling logic before touching a real account."
+      }
     },
     xpReward: 500,
     stipendReward: 500,
     isPremium: true,
     simulationImpact: { roas: 0.5, budgetSpent: 5000 },
-  },
-  {
-    id: 5,
-    title: "SEO Detective",
-    subtitle: "Keyword & Intent Analysis",
-    description: "Elena needs you to audit a competitor's blog post. Spot the weak intent and fix the structure.",
-    room: 'content',
-    npcName: "Elena Vasquez",
-    npcRole: "Content Strategist",
-    npcDialogue: [
-      {
-        id: 'start',
-        text: "The CMO wants us to outrank 'NovaMind' for 'AI Productivity'. But first, you need to spot where our competitors are failing.",
-        emotion: 'thinking'
-      }
-    ],
-    phases: [
-      {
-        id: 'phase-a',
-        type: 'diagnose',
-        title: "Phase A: Markup",
-        description: "Highlight the weak, 'generic' phrases in this competitor's intro.",
-        taskType: 'markup',
-        taskData: {
-          text: "Artificial Intelligence is very important for the future of modern business and work environments today.",
-          targets: ["very important", "future of modern business", "work environments today"]
-        },
-        taskPrompt: "Highlight 2-3 phrases that lack specific meaning (fluff).",
-        stipendReward: 700,
-      },
-      {
-        id: 'phase-b',
-        type: 'build',
-        title: "Phase B: Construction",
-        description: "Arrange the H2 headings for a 'Topic Cluster' strategy.",
-        taskType: 'rank-order',
-        taskData: {
-          items: [
-            "1. What is AI?",
-            "2. Top 5 AI Productivity Hacks",
-            "3. NovaMind vs Competitors",
-            "4. Case Study: 200% Growth with AI"
-          ]
-        },
-        taskPrompt: "Order these headings to follow a logical reader journey (Awareness → Interest → Intent).",
-        stipendReward: 800,
-      }
-    ],
-    difficulty: 'medium',
-    competencies: ["SEO", "Content Strategy"],
-    rubric: {
-      criteria: [
-        { name: "Strategic Intent", description: "Correct flow of information", weight: 60, examples: { good: "Case study last", bad: "Case study first" } },
-        { name: "Critical Thinking", description: "Identifying weak copy", weight: 40, examples: { good: "Spotting fluff", bad: "Ignoring generic text" } }
-      ],
-      passingScore: 75,
-      maxAttempts: 2
-    },
-    xpReward: 400,
-    stipendReward: 1500,
-    isPremium: false,
-    simulationImpact: { conversionRate: 1.2, leads: 80 }
-  },
-  {
-    id: 6,
-    title: "SEO Tectonics",
-    subtitle: "Semantic Keyword Mapping",
-    description: "Elena needs a content map. This isn't just about keywords; it's about semantic authority.",
-    room: 'content',
-    npcName: "Elena Vasquez",
-    npcRole: "Content Strategist",
-    npcDialogue: [
-      {
-        id: 'start',
-        text: "Content is royalty here. But only if it ranks. I need a content plan for our AI pillar page.",
-        options: [
-          { text: "Let's build a topic cluster that Google can't ignore.", nextId: 'mission', impact: { trust: 8 } },
-          { text: "Can we just use AI to write it?", nextId: 'mission', impact: { trust: -10 } }
-        ]
-      },
-      {
-        id: 'mission',
-        text: "Authority is earned, not generated. I need a primary keyword and 3 supporting LSI keywords for NovaMind.",
-        emotion: 'serious'
-      }
-    ],
-    taskType: 'short-answer',
-    taskPrompt: "Identify 1 primary keyword and 3 long-tail LSI keywords for a blog post about 'AI workflow automation for small businesses'.",
-    taskHints: ["Look for high intent, low difficulty", "Supporting keywords should answer 'How' or 'Why'"],
-    rubric: {
-      criteria: [
-        { name: "Search Intent", description: "Do these keywords match buyers?", weight: 50, examples: { good: "AI for agency owners", bad: "What is AI?" } },
-        { name: "Semantic Coverage", description: "How well do they cover the topic?", weight: 50, examples: { good: "Topic clustering", bad: "Repetitive keywords" } }
-      ],
-      passingScore: 75,
-      maxAttempts: 2
-    },
-    xpReward: 400,
-    stipendReward: 2000,
-    isPremium: false,
-    competencies: ["SEO", "Content Strategy"],
-    simulationImpact: { conversionRate: 0.5, leads: 100 },
-    difficulty: 'hard'
   }
 ];
 

@@ -6,6 +6,9 @@ import { FillBlanksTask } from './FillBlanksTask';
 import { RankOrderTask } from './RankOrderTask';
 import { SwipeTask } from './SwipeTask';
 import { MarkupTask } from './MarkupTask';
+import { MatchFollowingTask } from './MatchFollowingTask';
+import { VariableWritingTask } from './VariableWritingTask';
+import { ABTestTask } from './ABTestTask';
 
 interface TaskRendererProps {
     level: GameLevel;
@@ -15,8 +18,8 @@ interface TaskRendererProps {
 }
 
 export const TaskRenderer: React.FC<TaskRendererProps> = ({ level, onComplete, isEvaluating, activePhaseIndex }) => {
-    const activeTask = level.phases && activePhaseIndex !== undefined 
-        ? level.phases[activePhaseIndex] 
+    const activeTask = level.phases && activePhaseIndex !== undefined
+        ? level.phases[activePhaseIndex]
         : level;
 
     if (!activeTask) return null;
@@ -31,6 +34,15 @@ export const TaskRenderer: React.FC<TaskRendererProps> = ({ level, onComplete, i
         case 'short-answer':
         case 'creative-canvas':
             return <ShortAnswerTask level={activeTask as any} onComplete={onComplete} isEvaluating={isEvaluating} />;
+
+        case 'match-following':
+            return <MatchFollowingTask level={activeTask as any} onComplete={onComplete} isEvaluating={isEvaluating} />;
+
+        case 'variable-writing':
+            return <VariableWritingTask level={activeTask as any} onComplete={onComplete} isEvaluating={isEvaluating} />;
+
+        case 'ab-test':
+            return <ABTestTask level={activeTask as any} onComplete={onComplete} isEvaluating={isEvaluating} />;
 
         case 'fill-blanks':
         case 'drag-drop':

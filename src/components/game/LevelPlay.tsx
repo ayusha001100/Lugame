@@ -77,10 +77,16 @@ export const LevelPlay: React.FC = () => {
     if (level && level.npcDialogue && level.npcDialogue.length > 0) {
       setCurrentNode(level.npcDialogue[0]);
     }
-    // Reset phases when level changes
+    // Reset local phase submissions but preserve global state
     setPhaseSubmissions({});
-    setShowTask(false);
-  }, [currentLevelId, level]);
+
+    // If resuming from a later phase, go straight to the task
+    if (activePhaseIndex > 0) {
+      setShowTask(true);
+    } else {
+      setShowTask(false);
+    }
+  }, [currentLevelId, level, activePhaseIndex]);
 
   if (!player || !level) return null;
 
@@ -134,7 +140,8 @@ export const LevelPlay: React.FC = () => {
         taskData: currentPhase ? currentPhase.taskData : (level.taskData || {}),
         levelTitle: level.title,
         levelPrompt: currentPhase ? currentPhase.taskPrompt : (level.taskPrompt || ""),
-        attempt: currentAttempt
+        attempt: currentAttempt,
+        rubric: level.rubric
       });
 
       const evaluation = {

@@ -12,6 +12,7 @@ export interface Player {
   xp: number;
   level: number;
   completedLevels: number[];
+  completedPhases: Record<number, string[]>; // Tracks completed phase IDs per level
   portfolio: PortfolioItem[];
   createdAt: Date;
 
@@ -82,6 +83,12 @@ export interface WorldState {
   narrativeFlags: string[];
   npcMoods: Record<string, number>;
   activeCampaigns: string[]; // For simulation (Module 8)
+
+  // Session Persistence
+  lastActiveScreen?: string;
+  lastActiveRoomId?: string | null;
+  lastActiveLevelId?: number | null;
+  lastActivePhaseIndex?: number;
 }
 
 /**
@@ -114,7 +121,17 @@ export type TaskType =
   | 'timed-challenge'
   | 'sim-mini-game'
   | 'swipe'
-  | 'markup';
+  | 'markup'
+  | 'match-following'
+  | 'variable-writing'
+  | 'ab-test';
+
+export type EvaluationMode =
+  | 'exact_match'
+  | 'pair_match'
+  | 'ai_semantic'
+  | 'ai_contextual'
+  | 'keyword_match';
 
 export interface GameLevel {
   id: number;
@@ -151,7 +168,7 @@ export interface GameLevel {
 
 export interface LevelPhase {
   id: string;
-  type: 'diagnose' | 'build' | 'improve';
+  type: 'diagnose' | 'build' | 'improve' | 'assessment';
   title: string;
   description: string;
   taskType: TaskType;
@@ -159,6 +176,7 @@ export interface LevelPhase {
   taskPrompt: string;
   taskHints?: string[];
   stipendReward?: number; // Stipend for this specific phase
+  evaluationMode?: EvaluationMode;
 }
 
 export interface DialogueNode {
@@ -183,6 +201,11 @@ export interface EvaluationRubric {
   passingScore: number;
   maxAttempts: number;
   aiGradingPrompt?: string; // MODULE 6
+  feedbackDialogues?: {
+    high: string; // 85-100%
+    medium: string; // 70-84%
+    low: string; // < 70%
+  };
 }
 
 export interface RubricCriteria {

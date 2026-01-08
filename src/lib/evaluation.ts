@@ -39,6 +39,7 @@ export const evaluateSubmission = async (
         attempt?: number;
         phaseId?: string;
         taskData?: any;
+        rubric?: any;
     }
 ): Promise<EvaluationResultData> => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -48,8 +49,8 @@ export const evaluateSubmission = async (
     const taskData = config.taskData || {};
 
     // DETERMINISTIC EVALUATION FOR OBJECTIVE TASKS (NEW MODULE 6.1)
-    // Ensures questions are actually checked against the 'correct' data in levels.ts
-    const isObjective = ['mcq', 'fill-blanks', 'swipe', 'markup', 'rank-order'].includes(config.taskType);
+    const isObjective = ['mcq', 'fill-blanks', 'swipe', 'markup', 'rank-order', 'match-following', 'ab-test'].includes(config.taskType);
+    const evaluationMode = taskData.evaluationMode || (isObjective ? 'exact_match' : 'ai_semantic');
 
     if (isObjective && taskData) {
         let isCorrect = false;
@@ -58,20 +59,31 @@ export const evaluateSubmission = async (
         try {
             switch (config.taskType) {
                 case 'mcq':
+                case 'ab-test':
                     isCorrect = submission === taskData.correct;
                     objectiveScore = isCorrect ? 100 : 0;
                     break;
                 case 'fill-blanks':
-                    // Normalize for comparison
-                    const submissionArray = Array.isArray(submission) ? submission : submission.split(',').map((s: string) => s.trim());
+                    const submissionArray = Array.isArray(submission) ? submission : (typeof submission === 'string' ? submission.split(',').map((s: string) => s.trim()) : []);
                     const correctArray = taskData.correct || [];
                     isCorrect = JSON.stringify(submissionArray) === JSON.stringify(correctArray);
                     objectiveScore = isCorrect ? 100 : 0;
                     break;
+                case 'match-following':
+                    const userPairs = submission as Array<{ left: string, right: string }>;
+                    const correctPairs = taskData.pairs as Array<{ left: string, right: string }>;
+                    if (!userPairs || !correctPairs) break;
+                    let matches = 0;
+                    userPairs.forEach(up => {
+                        const match = correctPairs.find(cp => cp.left === up.left && cp.right === up.right);
+                        if (match) matches++;
+                    });
+                    objectiveScore = Math.round((matches / correctPairs.length) * 100);
+                    isCorrect = objectiveScore >= (config.passingScore || 70);
+                    break;
                 case 'swipe':
                     const swipeItems = taskData.items || [];
                     let swipeMatches = 0;
-                    // Submission is Record<string, 'approve' | 'reject'>
                     Object.entries(submission).forEach(([id, type]) => {
                         const original = swipeItems.find((i: any) => i.id === id);
                         if (original && original.type === type) swipeMatches++;
@@ -82,7 +94,6 @@ export const evaluateSubmission = async (
                 case 'markup':
                     const markupTargets = (taskData.targets || []).map((t: string) => t.toLowerCase());
                     const submissionText = (submission || "").toLowerCase();
-                    // Check how many target phrases are found in the marked text
                     let foundCount = 0;
                     markupTargets.forEach((target: string) => {
                         if (submissionText.includes(target)) foundCount++;
@@ -91,25 +102,34 @@ export const evaluateSubmission = async (
                     isCorrect = objectiveScore >= (config.passingScore || 60);
                     break;
                 case 'rank-order':
-                    // Compare arrays - items should be in correct order in taskData.items
                     isCorrect = JSON.stringify(submission) === JSON.stringify(taskData.items);
                     objectiveScore = isCorrect ? 100 : 0;
                     break;
             }
 
             if (isCorrect || objectiveScore > 0) {
+                // Get dialogue from rubric if available
+                const rubric = (config as any).rubric || (taskData.rubric);
+                let managerMessage = objectiveScore >= 80 ? "Your strategic logic is perfectly aligned with the mission brief." : "You've identified most of the key elements, but some strategic gaps remain.";
+
+                if (rubric?.feedbackDialogues) {
+                    if (objectiveScore >= 85) managerMessage = rubric.feedbackDialogues.high;
+                    else if (objectiveScore >= 70) managerMessage = rubric.feedbackDialogues.medium;
+                    else managerMessage = rubric.feedbackDialogues.low;
+                }
+
                 return {
                     score: objectiveScore,
                     passed: objectiveScore >= (config.passingScore || 60),
-                    feedback: objectiveScore >= 80 ? "Your strategic logic is perfectly aligned with the mission brief." : "You've identified most of the key elements, but some strategic gaps remain.",
-                    strengths: objectiveScore >= 80 ? ["Logical precision", "Pattern recognition"] : ["Basic understanding"],
-                    fixes: objectiveScore < 100 ? ["Analyze the core KPIs again"] : [],
-                    redoSuggestions: objectiveScore < 100 ? ["Review the strategic hints in the Mission Intel"] : [],
-                    nextBestAction: objectiveScore >= 60 ? "Proceed to next phase" : "Recalibrate and retry",
-                    criteriaScores: config.criteria.map(c => ({ name: c.name, score: objectiveScore, feedback: "Validated against mission data." })),
-                    improvement: objectiveScore < 100 ? "Look for deeper psychological triggers in the options." : "Excellent work. No improvements needed.",
+                    feedback: objectiveScore >= 80 ? "Strategic logic verified." : "Gaps detected in alignment.",
+                    strengths: objectiveScore >= 80 ? ["Precision", "Accuracy"] : ["Basic Logic"],
+                    fixes: objectiveScore < 100 ? ["Analyze target variables more closely"] : [],
+                    redoSuggestions: objectiveScore < 100 ? ["Review mission briefing"] : [],
+                    nextBestAction: objectiveScore >= 60 ? "Advance" : "Retry",
+                    criteriaScores: config.criteria.map(c => ({ name: c.name, score: objectiveScore, feedback: "Strategic Validation." })),
+                    improvement: objectiveScore < 100 ? "Look for deeper triggers." : "Perfect work.",
                     managerMood: objectiveScore >= 80 ? 'happy' : (objectiveScore >= 60 ? 'neutral' : 'angry'),
-                    managerMessage: objectiveScore >= 80 ? "That's exactly what I was looking for. Keep this momentum." : "It's acceptable, but I know you can do better.",
+                    managerMessage,
                     kpiImpact: { conversionRate: (objectiveScore / 100) * 1, leads: Math.floor((objectiveScore / 100) * 50) }
                 };
             }
@@ -126,55 +146,40 @@ export const evaluateSubmission = async (
 
     try {
         const difficultyContext = levelId <= 3
-            ? "This is an introductory level (NOVICE). The intern is new. Be extremely lenient and encouraging. If they have the basic idea right, give them a high score (80-90+). Focus on teaching them the ropes. Do NOT fail them unless the answer is completely irrelevant."
+            ? "NOVICE - Be lenient and encouraging."
             : levelId <= 7
-                ? "This is a mid-level challenge (PROFESSIONAL). Be professional and balanced. Expect correct industry terminology and logical reasoning. Grade fairly but strictly. Small mistakes are okay but should be mentioned in the fixes."
-                : "This is an advanced level (ELITE). You are now looking for a future Lead Strategist. Be highly critical, cynical, and tough. Do NOT accept mediocre work. Even small strategic errors should result in a score below the passing threshold. Make them work for it.";
+                ? "PROFESSIONAL - Be strict and fair."
+                : "ELITE - Be extremely tough and critical.";
 
         const prompt = `
-        You are a Senior Marketing Director at NovaTech. You are evaluating a submission from a Marketing Intern.
+        You are a Senior Marketing Director. Evaluate this Intern's submission.
         
-        MISSION CONTEXT:
-        - LEVEL ID: ${levelId}
-        - DIFFICULTY MODE: ${levelId <= 3 ? "LENIENT" : levelId <= 7 ? "STANDARD" : "ULTRA-STRICT"}
-        - LEVEL TITLE: ${config.levelTitle || "N/A"}
-        - DESIGNATED TASK: ${config.levelPrompt || "N/A"}
-        - TASK TYPE: ${config.taskType}
-        - CORRECT DATA/ANSWER (USE THIS AS TRUTH): ${JSON.stringify(taskData)}
+        CONTEXT:
+        - MISSION: ${config.levelTitle || "N/A"}
+        - TASK: ${config.levelPrompt || "N/A"}
+        - TYPE: ${config.taskType}
+        - MODE: ${evaluationMode}
+        - TARGET DATA: ${JSON.stringify(taskData)}
         
         SUBMISSION:
         "${typeof submission === 'string' ? submission : JSON.stringify(submission)}"
         
-        RUBRIC & CRITERIA:
+        RUBRIC:
         ${config.criteria.map(c => `- ${c.name}: ${c.description} (Weight: ${c.weight}%)`).join('\n')}
         PASSING SCORE: ${config.passingScore}
         
         INSTRUCTIONS:
-        1. Compare the SUBMISSION against the CORRECT DATA.
-        2. If the task is objective (MCQ, etc.) and doesn't match the CORRECT DATA, they MUST fail.
-        3. For subjective tasks (Short Answer), grade based on how well they covered the expected keywords or intent in the CORRECT DATA.
-        4. Be professional and detailed.
+        1. For 'ai_semantic' mode: Check for clarity, benefit-driven language, and audience resonance.
+        2. For 'ai_contextual' mode: Ensure variables from taskData (like pain_point, competitor) are addressed or implied.
+        3. Grade based on the difficulty context: ${difficultyContext}
         
-        MANAGER PERSONA RULES:
-        - If score >= 80: Mood is "happy". Manager is impressed.
-        - If score >= 60 and < 80: Mood is "neutral". Manager expects more.
-        - If score < 60: Mood is "disappointed" or "angry" if repetitive.
-        
-        RETURN JSON STRUCTURE:
+        RETURN JSON:
         {
-            "score": number (0-100),
-            "passed": boolean,
-            "feedback": "string",
-            "strengths": ["string"],
-            "fixes": ["string"],
-            "redoSuggestions": ["string"],
-            "nextBestAction": "string",
-            "managerMood": "happy" | "neutral" | "disappointed" | "angry",
-            "managerMessage": "string",
-            "suggestedKeywords": ["string"],
-            "criteriaScores": [
-                { "name": "string", "score": number, "feedback": "string" }
-            ],
+            "score": number, "passed": boolean, "feedback": "string",
+            "strengths": ["string"], "fixes": ["string"], "redoSuggestions": ["string"],
+            "nextBestAction": "string", "managerMood": "happy" | "neutral" | "disappointed" | "angry",
+            "managerMessage": "string", "suggestedKeywords": ["string"],
+            "criteriaScores": [ { "name": "string", "score": number, "feedback": "string" } ],
             "improvement": "string"
         }
         `;
@@ -184,23 +189,23 @@ export const evaluateSubmission = async (
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    temperature: 0.8
-                }
+                generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
             })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API call failed: ${JSON.stringify(errorData)}`);
-        }
+        if (!response.ok) throw new Error("API failed");
 
         const data = await response.json();
-        const rawContent = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(rawContent);
+        const result = JSON.parse(data.candidates[0].content.parts[0].text);
 
-        // Ensure passed is based on 60% if not specified
+        // Override manager message if rubric dialogues exist
+        const rubric = (config as any).rubric || taskData.rubric;
+        if (rubric?.feedbackDialogues) {
+            if (result.score >= 85) result.managerMessage = rubric.feedbackDialogues.high;
+            else if (result.score >= 70) result.managerMessage = rubric.feedbackDialogues.medium;
+            else result.managerMessage = rubric.feedbackDialogues.low;
+        }
+
         result.passed = result.score >= (config.passingScore || 60);
 
         return {
