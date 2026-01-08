@@ -48,91 +48,24 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Use a token
+    useToken(1);
+
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const level = GAME_LEVELS.find(l => l.id === levelId);
 
-      if (!apiKey) {
-        // Use Pollinations AI as a free, no-key-needed model for "Live" usage
-        try {
-          // Prepare the system-aware prompt for Pollinations
-          const systemContext = `You are ELYSIUM, a high-tech Strategic AI Marketing Assistant developed by NovaTech. MISSION CONTEXT: ${level?.title} - ${level?.taskPrompt}. Hints: ${level?.taskHints?.join(', ')}. Rules: Be professional, futuristic, and provide world-class marketing advice. Answer WHATEVER the user asks.`;
-          const pollinationsPrompt = `${systemContext}\n\nUser: ${userMessage}`;
+      // STRATEGY: POLLINATIONS AI (Free, Primary)
+      console.log("Engaging Pollinations AI Assistant...");
 
-          const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(pollinationsPrompt)}?model=openai&cache=true`);
+      const systemContext = `You are ELYSIUM, a high-tech Strategic AI Marketing Assistant. MISSION: ${level?.title} - ${level?.taskPrompt}. Hints: ${level?.taskHints?.join(', ') || 'Analyze the data'}. Rules: Be professional, futuristic, and helpful.`;
+      const fullPrompt = `${systemContext}\n\nUser: ${userMessage}`;
 
-          if (!response.ok) throw new Error("Pollinations API failed");
+      // Use 'openai' model alias on Pollinations
+      const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
 
-          const assistantMessage = await response.text();
+      if (!response.ok) throw new Error("Pollinations API failed");
 
-          setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
-          setIsLoading(false);
-          return;
-        } catch (pollError) {
-          console.error("Pollinations Error:", pollError);
-          // Only use the hardcoded fallback if Pollinations also fails
-          const fallbackMessage = `Agent, I am ELYSIUM. My primary neural link is offline. However, regarding "${level?.title || 'this task'}", I suggest: ${level?.taskHints?.[0] || 'optimizing your output'}.`;
-          setMessages(prev => [...prev, { role: 'assistant', content: fallbackMessage }]);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Use a token
-      useToken(1);
-
-      const answerIntel = level ? `
-        MISSION CONTEXT (FOR ELYSIUM ONLY):
-        - Current Level: ${level.title}
-        - Objective: ${level.taskPrompt}
-        - Secret Correct Data: ${JSON.stringify(level.taskData || {})}
-        - Assessment Rubric: ${JSON.stringify(level.rubric || {})}
-        - Hints: ${level.taskHints?.join(', ')}
-      ` : "";
-
-      const systemInstruction = `
-        You are ELYSIUM, a high-tech Strategic AI Marketing Assistant developed by NovaTech.
-        Your goal is to guide the user (Marketing Intern) to success in the "Marketing Mastery Quest".
-
-        CORE PROTOCOLS:
-        1. PERSOANA: Professional, futuristic, highly intelligent, and supportive. Use corporate/tech jargon occasionally.
-        2. MISSION INTEL: You have access to secret mission data. If the user is stuck or asks for the answer, provide it clearly but keep in character.
-        3. GENERAL ANSWERS: If the user asks general marketing questions (e.g., "What is ROAS?", "How do I scale ads?"), provide world-class, expert marketing advice.
-        4. VERSATILITY: Answer WHATEVER the user asks, but always tie it back to their growth as a Marketing Warrior if possible.
-        
-        ${answerIntel}
-      `;
-
-      // Map our messages to Gemini's expected format (role 'model' instead of 'assistant')
-      const geminiMessages = newMessages.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      }));
-
-      const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          systemInstruction: {
-            parts: [{ text: systemInstruction }]
-          },
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 400
-          }
-        })
-      });
-
-      if (!response.ok) {
-        // Handle specific API errors
-        const errorText = await response.text();
-        console.error("Gemini API Error:", errorText);
-        throw new Error("Neural link failed.");
-      }
-
-      const data = await response.json();
-      const assistantMessage = data.candidates[0].content.parts[0].text;
+      const assistantMessage = await response.text();
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
       addAISuggestion(assistantMessage);
@@ -140,7 +73,7 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
     } catch (error) {
       console.error("AI Assistant Error:", error);
       toast.error("Neural link unstable. Check your connection.");
-      setMessages(prev => [...prev, { role: 'assistant', content: "My communication frequencies are jammed. Please re-engage in a moment or verify the system API configurations." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "My communication frequencies are jammed. Please re-engage in a moment." }]);
     } finally {
       setIsLoading(false);
     }

@@ -20,17 +20,11 @@ export interface EvaluationResultData {
     suggestedKeywords?: string[];
 }
 
-const GEMINI_MODELS = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-1.0-pro"
-];
-
 const POLLINATIONS_URL = "https://text.pollinations.ai/";
 
 /**
  * MODULE 6: AI Evaluation & Feedback Orchestrator
- * Connects to Gemini API with robust fallbacks to Pollinations AI
+ * Uses Pollinations AI (Free) as the primary evaluation engine.
  */
 export const evaluateSubmission = async (
     submission: any,
@@ -48,7 +42,6 @@ export const evaluateSubmission = async (
         rubric?: any;
     }
 ): Promise<EvaluationResultData> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const taskData = config.taskData || {};
 
     // DETERMINISTIC EVALUATION FOR OBJECTIVE TASKS
@@ -57,90 +50,87 @@ export const evaluateSubmission = async (
 
     if (isObjective && taskData && !evaluationMode.includes('ai_')) {
         try {
-            // ... (Existing deterministic logic remains unchanged for brevity, as it was working) ...
             let isCorrect = false;
             let objectiveScore = 0;
 
-            try {
-                switch (config.taskType) {
-                    case 'mcq':
-                    case 'ab-test':
-                        isCorrect = submission === taskData.correct;
-                        objectiveScore = isCorrect ? 100 : 0;
-                        break;
-                    case 'fill-blanks':
-                        const submissionArray = Array.isArray(submission) ? submission : (typeof submission === 'string' ? submission.split(',').map((s: string) => s.trim()) : []);
-                        const correctArray = taskData.correct || [];
-                        isCorrect = JSON.stringify(submissionArray) === JSON.stringify(correctArray);
-                        objectiveScore = isCorrect ? 100 : 0;
-                        break;
-                    case 'match-following':
-                        const userPairs = submission as Array<{ left: string, right: string }>;
-                        const correctPairs = taskData.pairs as Array<{ left: string, right: string }>;
-                        if (!userPairs || !correctPairs) break;
-                        let matches = 0;
-                        userPairs.forEach(up => {
-                            const match = correctPairs.find(cp => cp.left === up.left && cp.right === up.right);
-                            if (match) matches++;
-                        });
-                        objectiveScore = Math.round((matches / correctPairs.length) * 100);
-                        isCorrect = objectiveScore >= (config.passingScore || 70);
-                        break;
-                    case 'swipe':
-                        const swipeItems = taskData.items || [];
-                        let swipeMatches = 0;
-                        Object.entries(submission).forEach(([id, type]) => {
-                            const original = swipeItems.find((i: any) => i.id === id);
-                            if (original && original.type === type) swipeMatches++;
-                        });
-                        objectiveScore = Math.round((swipeMatches / swipeItems.length) * 100);
-                        isCorrect = objectiveScore >= (config.passingScore || 80);
-                        break;
-                    case 'markup':
-                        const markupTargets = (taskData.targets || []).map((t: string) => t.toLowerCase());
-                        const submissionText = (submission || "").toLowerCase();
-                        let foundCount = 0;
-                        markupTargets.forEach((target: string) => {
-                            if (submissionText.includes(target)) foundCount++;
-                        });
-                        objectiveScore = Math.round((foundCount / markupTargets.length) * 100);
-                        isCorrect = objectiveScore >= (config.passingScore || 60);
-                        break;
-                    case 'rank-order':
-                        isCorrect = JSON.stringify(submission) === JSON.stringify(taskData.items);
-                        objectiveScore = isCorrect ? 100 : 0;
-                        break;
-                }
-
-                if (isCorrect || objectiveScore > 0) {
-                    const rubric = (config as any).rubric || (taskData.rubric);
-                    let managerMessage = objectiveScore >= 80 ? "Your strategic logic is perfectly aligned with the mission brief." : "You've identified most of the key elements, but some strategic gaps remain.";
-
-                    if (rubric?.feedbackDialogues) {
-                        if (objectiveScore >= 85) managerMessage = rubric.feedbackDialogues.high;
-                        else if (objectiveScore >= 70) managerMessage = rubric.feedbackDialogues.medium;
-                        else managerMessage = rubric.feedbackDialogues.low;
-                    }
-
-                    return {
-                        score: objectiveScore,
-                        passed: objectiveScore >= (config.passingScore || 60),
-                        feedback: objectiveScore >= 80 ? "Strategic logic verified." : "Gaps detected in alignment.",
-                        strengths: objectiveScore >= 80 ? ["Precision", "Accuracy"] : ["Basic Logic"],
-                        fixes: objectiveScore < 100 ? ["Analyze target variables more closely"] : [],
-                        redoSuggestions: objectiveScore < 100 ? ["Review mission briefing"] : [],
-                        nextBestAction: objectiveScore >= 60 ? "Advance" : "Retry",
-                        criteriaScores: config.criteria.map(c => ({ name: c.name, score: objectiveScore, feedback: "Strategic Validation." })),
-                        improvement: objectiveScore < 100 ? "Look for deeper triggers." : "Perfect work.",
-                        managerMood: objectiveScore >= 80 ? 'happy' : (objectiveScore >= 60 ? 'neutral' : 'angry'),
-                        managerMessage,
-                        kpiImpact: { conversionRate: (objectiveScore / 100) * 1, leads: Math.floor((objectiveScore / 100) * 50) }
-                    };
-                }
-            } catch (e) {
-                console.warn("Objective check failed, falling back to AI:", e);
+            switch (config.taskType) {
+                case 'mcq':
+                case 'ab-test':
+                    isCorrect = submission === taskData.correct;
+                    objectiveScore = isCorrect ? 100 : 0;
+                    break;
+                case 'fill-blanks':
+                    const submissionArray = Array.isArray(submission) ? submission : (typeof submission === 'string' ? submission.split(',').map((s: string) => s.trim()) : []);
+                    const correctArray = taskData.correct || [];
+                    isCorrect = JSON.stringify(submissionArray) === JSON.stringify(correctArray);
+                    objectiveScore = isCorrect ? 100 : 0;
+                    break;
+                case 'match-following':
+                    const userPairs = submission as Array<{ left: string, right: string }>;
+                    const correctPairs = taskData.pairs as Array<{ left: string, right: string }>;
+                    if (!userPairs || !correctPairs) break;
+                    let matches = 0;
+                    userPairs.forEach(up => {
+                        const match = correctPairs.find(cp => cp.left === up.left && cp.right === up.right);
+                        if (match) matches++;
+                    });
+                    objectiveScore = Math.round((matches / correctPairs.length) * 100);
+                    isCorrect = objectiveScore >= (config.passingScore || 70);
+                    break;
+                case 'swipe':
+                    const swipeItems = taskData.items || [];
+                    let swipeMatches = 0;
+                    Object.entries(submission).forEach(([id, type]) => {
+                        const original = swipeItems.find((i: any) => i.id === id);
+                        if (original && original.type === type) swipeMatches++;
+                    });
+                    objectiveScore = Math.round((swipeMatches / swipeItems.length) * 100);
+                    isCorrect = objectiveScore >= (config.passingScore || 80);
+                    break;
+                case 'markup':
+                    const markupTargets = (taskData.targets || []).map((t: string) => t.toLowerCase());
+                    const submissionText = (submission || "").toLowerCase();
+                    let foundCount = 0;
+                    markupTargets.forEach((target: string) => {
+                        if (submissionText.includes(target)) foundCount++;
+                    });
+                    objectiveScore = Math.round((foundCount / markupTargets.length) * 100);
+                    isCorrect = objectiveScore >= (config.passingScore || 60);
+                    break;
+                case 'rank-order':
+                    isCorrect = JSON.stringify(submission) === JSON.stringify(taskData.items);
+                    objectiveScore = isCorrect ? 100 : 0;
+                    break;
             }
-        } catch (e) { console.warn("Objective check failed", e); }
+
+            if (isCorrect || objectiveScore > 0) {
+                const rubric = (config as any).rubric || (taskData.rubric);
+                let managerMessage = objectiveScore >= 80 ? "Your strategic logic is perfectly aligned with the mission brief." : "You've identified most of the key elements, but some strategic gaps remain.";
+
+                if (rubric?.feedbackDialogues) {
+                    if (objectiveScore >= 85) managerMessage = rubric.feedbackDialogues.high;
+                    else if (objectiveScore >= 70) managerMessage = rubric.feedbackDialogues.medium;
+                    else managerMessage = rubric.feedbackDialogues.low;
+                }
+
+                return {
+                    score: objectiveScore,
+                    passed: objectiveScore >= (config.passingScore || 60),
+                    feedback: objectiveScore >= 80 ? "Strategic logic verified." : "Gaps detected in alignment.",
+                    strengths: objectiveScore >= 80 ? ["Precision", "Accuracy"] : ["Basic Logic"],
+                    fixes: objectiveScore < 100 ? ["Analyze target variables more closely"] : [],
+                    redoSuggestions: objectiveScore < 100 ? ["Review mission briefing"] : [],
+                    nextBestAction: objectiveScore >= 60 ? "Advance" : "Retry",
+                    criteriaScores: config.criteria.map(c => ({ name: c.name, score: objectiveScore, feedback: "Strategic Validation." })),
+                    improvement: objectiveScore < 100 ? "Look for deeper triggers." : "Perfect work.",
+                    managerMood: objectiveScore >= 80 ? 'happy' : (objectiveScore >= 60 ? 'neutral' : 'angry'),
+                    managerMessage,
+                    kpiImpact: { conversionRate: (objectiveScore / 100) * 1, leads: Math.floor((objectiveScore / 100) * 50) }
+                };
+            }
+        } catch (e) {
+            console.warn("Objective check failed, falling back to AI:", e);
+        }
     }
 
     // AI EVALUATION PROMPT CONSTRUCTION
@@ -166,63 +156,47 @@ export const evaluateSubmission = async (
     }
     `;
 
-    // STRATEGY 1: TRY GEMINI (If Key Exists)
-    if (apiKey) {
-        for (const model of GEMINI_MODELS) {
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 404) continue; // Try next model
-                    throw new Error(`Gemini Error ${response.status}`);
-                }
-
-                const data = await response.json();
-                const result = JSON.parse(data.candidates[0].content.parts[0].text);
-
-                // Enhance result with KPIs
-                return {
-                    ...result,
-                    kpiImpact: {
-                        conversionRate: (result.score / 100) * 2,
-                        leads: Math.floor((result.score / 100) * 100),
-                        roas: (result.score / 100) * 0.5,
-                        revenue: Math.floor((result.score / 100) * 5000)
-                    }
-                };
-            } catch (e) {
-                console.warn(`Model ${model} failed, trying next...`, e);
-            }
-        }
-    }
-
-    // STRATEGY 2: POLLINATIONS (Fallback)
+    // STRATEGY: ALWAYS USE POLLINATIONS (Free, No Auth)
     try {
-        console.log("Falling back to Pollinations AI...");
-        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(prompt + " \nIMPORTANT: Respond ONLY with the raw JSON.")}?model=openai`);
-        if (!response.ok) throw new Error("Pollinations failed");
+        console.log("Engaging Pollinations AI Auto-Grader...");
+
+        // Use 'openai' model alias on Pollinations for best reasoning
+        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(prompt + " \nIMPORTANT: Respond ONLY with the raw JSON. Do not use markdown blocks.")}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
+
+        if (!response.ok) throw new Error("Pollinations Service Unavailable");
 
         const text = await response.text();
-        // Sanitize JSON
+
+        // Sanitize JSON (remove markdown backticks if present)
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         const jsonStr = jsonMatch ? jsonMatch[0] : text;
         const result = JSON.parse(jsonStr);
 
+        // Sanity Check Result
+        if (typeof result.score !== 'number') result.score = 70; // Fallback safety
+
         return {
-            ...result,
+            score: result.score,
             passed: result.score >= (config.passingScore || 60),
-            kpiImpact: { conversionRate: (result.score / 100) * 1.5, leads: 50 }
+            feedback: result.feedback || "Evaluation complete.",
+            strengths: result.strengths || [],
+            fixes: result.fixes || [],
+            redoSuggestions: [],
+            nextBestAction: result.score >= 60 ? "Advance" : "Retry",
+            criteriaScores: result.criteriaScores || [],
+            improvement: "Focus on strategic depth.",
+            managerMood: result.managerMood || 'neutral',
+            managerMessage: result.managerMessage || "Review your data.",
+            kpiImpact: {
+                conversionRate: (result.score / 100) * 1.5,
+                leads: Math.floor((result.score / 100) * 120),
+                roas: (result.score / 100) * 0.8,
+                revenue: Math.floor((result.score / 100) * 6000)
+            }
         };
 
     } catch (e) {
-        console.error("All AI Evaluators failed:", e);
+        console.error("Pollinations Evaluator failed:", e);
         return fallbackEvaluation(submission, config, taskData);
     }
 };
