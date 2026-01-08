@@ -20,7 +20,7 @@ export interface EvaluationResultData {
     suggestedKeywords?: string[];
 }
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 /**
  * MODULE 6: AI Evaluation & Feedback Orchestrator
@@ -52,7 +52,8 @@ export const evaluateSubmission = async (
     const isObjective = ['mcq', 'fill-blanks', 'swipe', 'markup', 'rank-order', 'match-following', 'ab-test'].includes(config.taskType);
     const evaluationMode = taskData.evaluationMode || (isObjective ? 'exact_match' : 'ai_semantic');
 
-    if (isObjective && taskData) {
+    // ONLY perform deterministic check if mode is NOT 'ai_semantic' or 'ai_contextual'
+    if (isObjective && taskData && !evaluationMode.includes('ai_')) {
         let isCorrect = false;
         let objectiveScore = 0;
 
@@ -241,7 +242,9 @@ const fallbackEvaluation = async (submission: any, config: any, taskData: any): 
     const isObjective = ['mcq', 'fill-blanks', 'swipe', 'markup', 'rank-order'].includes(config.taskType);
 
     // If it's an objective task but deterministic check failed/was skipped, check again here
-    if (isObjective && taskData) {
+    const evaluationMode = taskData?.evaluationMode || (isObjective ? 'exact_match' : 'ai_semantic');
+
+    if (isObjective && taskData && !evaluationMode.includes('ai_')) {
         // (Similar logic to above but simplified for fallback)
         let localScore = 0;
         if (config.taskType === 'mcq') localScore = submission === taskData.correct ? 100 : 0;
