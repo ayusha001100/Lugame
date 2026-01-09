@@ -32,6 +32,7 @@ interface GameState {
   isClockedIn: boolean;
   isResting: boolean; // New state for 10 PM - 9 AM
   growthData: { day: number; timestamp: number; revenue: number; leads: number; type?: string; isBaseline?: boolean }[];
+  currentCertificateType: 'master' | 'marketing' | 'ads' | 'content' | 'creative' | 'analytics' | null;
 
   // Identity & Profile (MODULE 1)
   setPlayer: (player: Player) => void;
@@ -43,6 +44,7 @@ interface GameState {
 
   // Navigation
   setScreen: (screen: GameScreen) => void;
+  setCertificationType: (type: 'master' | 'marketing' | 'ads' | 'content' | 'creative' | 'analytics' | null) => void;
   setCurrentLevel: (levelId: number | null) => void;
   setCurrentRoom: (roomId: string | null) => void;
   setActivePhaseIndex: (index: number) => void;
@@ -77,6 +79,7 @@ interface GameState {
   setAudio: (updates: Partial<AudioState>) => void;
   toggleMusic: () => void;
   toggleSfx: () => void;
+  setVolume: (volume: number) => void;
 
   // Achievement System
   checkAchievements: (score?: number, isFirstTry?: boolean) => void;
@@ -126,7 +129,7 @@ const getTodayString = () => new Date().toISOString().split('T')[0];
 const getDefaultStats = (): PlayerStats => ({
   skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0, Strategy: 0, Design: 0 },
   reputation: 10,
-  trust: { manager: 50, designer: 50, founder: 20 },
+  trust: { manager: 50, designer: 50, founder: 20, media: 40, analyst: 40 },
   performanceKPIs: {
     roas: 0,
     cac: 0,
@@ -164,6 +167,7 @@ export const useGameStore = create<GameState>()(
       gameTime: "09:00 AM",
       isClockedIn: false,
       isResting: false,
+      currentCertificateType: null,
       growthData: (() => {
         // Generate an organic-looking baseline trajectory for the company before the player started
         const baseline = [];
@@ -392,13 +396,21 @@ export const useGameStore = create<GameState>()(
       },
 
       completePhase: (levelId, phaseId, result) => {
-        const p = get().player;
-        if (!p) return;
+        const currentP = get().player;
+        if (!currentP) return;
         const level = GAME_LEVELS.find(l => l.id === levelId);
         const phase = level?.phases?.find(ph => ph.id === phaseId);
 
+        const currentKPIs = currentP.stats.performanceKPIs;
         const stipendBonus = phase?.stipendReward || 0;
-        if (result.passed && stipendBonus > 0) updatedKPIs.stipend += stipendBonus;
+        
+        // Ensure total stipend does not exceed 10,000
+        const newStipend = Math.min(10000, currentKPIs.stipend + (result.passed ? stipendBonus : 0));
+
+        const updatedKPIs = {
+          ...currentKPIs,
+          stipend: newStipend
+        };
 
         const newGrowthData = [...get().growthData, {
           day: currentP.worldState.currentDay,
@@ -517,14 +529,17 @@ export const useGameStore = create<GameState>()(
         const weightedScore = portfolioItem.score / 100;
         const stipendEarned = weightedScore * (level.stipendReward || 0);
 
+        const currentKPIs = currentP.stats.performanceKPIs;
+        const newStipend = Math.min(10000, currentKPIs.stipend + stipendEarned);
+
         const updatedKPIs = {
-          ...currentP.stats.performanceKPIs,
-          roas: Math.max(0, currentP.stats.performanceKPIs.roas + (impact.roas || 0)),
-          cac: Math.max(0, currentP.stats.performanceKPIs.cac + (impact.cac || 0)),
-          conversionRate: Math.min(100, Math.max(0, currentP.stats.performanceKPIs.conversionRate + (impact.conversionRate || 0))),
-          leads: Math.max(0, currentP.stats.performanceKPIs.leads + (impact.leads || 0)),
-          revenue: Math.max(0, currentP.stats.performanceKPIs.revenue + (impact.revenue || 0)),
-          stipend: currentP.stats.performanceKPIs.stipend + stipendEarned
+          ...currentKPIs,
+          roas: Math.max(0, currentKPIs.roas + (impact.roas || 0)),
+          cac: Math.max(0, currentKPIs.cac + (impact.cac || 0)),
+          conversionRate: Math.min(100, Math.max(0, currentKPIs.conversionRate + (impact.conversionRate || 0))),
+          leads: Math.max(0, currentKPIs.leads + (impact.leads || 0)),
+          revenue: Math.max(0, currentKPIs.revenue + (impact.revenue || 0)),
+          stipend: newStipend
         };
 
         const newGrowthData = [...get().growthData, {
@@ -571,6 +586,7 @@ export const useGameStore = create<GameState>()(
         set({ currentScreen: screen });
         get().saveSessionSnapshot();
       },
+      setCertificationType: (type) => set({ currentCertificateType: type }),
       setCurrentLevel: (levelId) => {
         const p = get().player;
         let startIndex = 0;
@@ -615,6 +631,7 @@ export const useGameStore = create<GameState>()(
       setAudio: (updates) => set((state) => ({ audio: { ...state.audio, ...updates } })),
       toggleMusic: () => set((state) => ({ audio: { ...state.audio, isMusicPlaying: !state.audio.isMusicPlaying } })),
       toggleSfx: () => set((state) => ({ audio: { ...state.audio, isSfxEnabled: !state.audio.isSfxEnabled } })),
+      setVolume: (volume) => set((state) => ({ audio: { ...state.audio, volume } })),
       clearPendingAchievement: () => set({ pendingAchievement: null }),
       checkAchievements: () => { },
       isLevelUnlocked: (levelId) => {

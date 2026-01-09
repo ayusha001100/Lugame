@@ -60,7 +60,7 @@ export interface PlayerPreferences {
 export interface PlayerStats {
   skillTree: Record<string, number>; // SEO, Ads, Copy, Analytics levels
   reputation: number;
-  trust: Record<'manager' | 'designer' | 'founder', number>;
+  trust: Record<'manager' | 'designer' | 'founder' | 'media' | 'analyst', number>;
   performanceKPIs: MarketingKPIs;
   inventory: string[]; // Items/Tokens collected (Module 2)
   energy: number; // For actions (Module 7)

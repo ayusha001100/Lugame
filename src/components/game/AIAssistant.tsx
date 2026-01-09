@@ -53,44 +53,59 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
 
     try {
       const level = GAME_LEVELS.find(l => l.id === levelId);
-      const systemContext = `You are ELYSIUM, a high-tech Strategic AI Marketing Assistant. MISSION: ${level?.title} - ${level?.taskPrompt}. Hints: ${level?.taskHints?.join(', ') || 'Analyze the data'}. Rules: Be professional, futuristic, and helpful.`;
+      const systemContext = `You are ELYSIUM, a Strategic AI Assistant. Role: Digital Marketing Director. MISSION: ${level?.title}. Context: ${level?.taskPrompt}. Be concise and professional.`;
       const fullPrompt = `${systemContext}\n\nUser: ${userMessage}`;
       
       let assistantMessage = "";
 
-      // STRATEGY 1: POLLINATIONS (Primary - Free & Reliable)
-      try {
-        console.log("Engaging Pollinations AI Assistant...");
-        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(fullPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
-        if (response.ok) {
-          assistantMessage = await response.text();
+      // STRATEGY 1: GEMINI (Primary for Speed & Quality if API Key exists)
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (apiKey && apiKey.length > 10) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: fullPrompt }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 500 }
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const data = await response.json();
+            assistantMessage = data.candidates[0].content.parts[0].text;
+          }
+        } catch (e) {
+          console.warn("Gemini Assistant failed, falling back to Pollinations...");
         }
-      } catch (e) {
-        console.warn("Pollinations Assistant failed, checking Gemini fallback...");
       }
 
-      // STRATEGY 2: GEMINI (Secondary Fallback)
+      // STRATEGY 2: POLLINATIONS (Fallback)
       if (!assistantMessage) {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (apiKey && apiKey.length > 10) {
-          try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: fullPrompt }] }],
-                generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
-              })
-            });
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); 
 
-            if (response.ok) {
-              const data = await response.json();
-              assistantMessage = data.candidates[0].content.parts[0].text;
-            }
-          } catch (e) {
-            console.error("Gemini Assistant failed:", e);
+          const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(fullPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`, {
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            assistantMessage = await response.text();
           }
+        } catch (e) {
+          console.error("Pollinations Assistant failed:", e);
         }
+      }
+
+      if (!assistantMessage) {
+        assistantMessage = "Neural link unstable. Please retry your query.";
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);

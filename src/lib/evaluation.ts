@@ -98,8 +98,21 @@ export const evaluateSubmission = async (
                     isCorrect = objectiveScore >= (config.passingScore || 60);
                     break;
                 case 'rank-order':
-                    isCorrect = JSON.stringify(submission) === JSON.stringify(taskData.items);
-                    objectiveScore = isCorrect ? 100 : 0;
+                    const userOrder = submission as string[];
+                    const correctOrder = taskData.correctOrder || taskData.items || [];
+                    
+                    if (JSON.stringify(userOrder) === JSON.stringify(correctOrder)) {
+                        objectiveScore = 100;
+                        isCorrect = true;
+                    } else {
+                        // Partial credit for rank-order
+                        let matches = 0;
+                        userOrder.forEach((item, index) => {
+                            if (item === correctOrder[index]) matches++;
+                        });
+                        objectiveScore = Math.round((matches / correctOrder.length) * 100);
+                        isCorrect = objectiveScore >= (config.passingScore || 70);
+                    }
                     break;
             }
 
@@ -134,22 +147,12 @@ export const evaluateSubmission = async (
     }
 
     // AI EVALUATION PROMPT CONSTRUCTION
-    // REVISED: Shift "Elite" to Level 9+ so the Banner Forge (Lvl 8) is graded as "Professional" (Fair but Verified) rather than "Critical".
+    const isRankOrder = config.taskType === 'rank-order';
+    const submissionText = isRankOrder 
+        ? `Ranked Order: ${Array.isArray(submission) ? submission.map((s, i) => `${i + 1}. ${s}`).join(', ') : submission}`
+        : (typeof submission === 'string' ? submission : JSON.stringify(submission));
+
     const difficultyContext = config.levelId <= 3 ? "NOVICE - Be lenient." : config.levelId < 9 ? "PROFESSIONAL - Be strict but fair." : "ELITE - Be critical.";
-
-    // Special handling for Creative Tasks to ensure "Accurate Marks" based on elements
-    const isCreative = config.taskType === 'creative-canvas';
-    const creativeContext = isCreative ?
-        "IMPORTANT: Evaluate based on the PRESENCE of required elements (CTA, Headline, Colors) in the JSON data. Do not judge 'beauty', judge 'functional requirements'." : "";
-
-    // Condensed prompt for stability
-    const prompt = `
-    Role: Elite Marketing Director. Task: Evaluate this intern submission.
-    Context: ${config.levelTitle} - ${config.levelPrompt}
-    Difficulty: ${difficultyContext}
-    ${creativeContext}
-
-    Submission: "${typeof submission === 'string' ? submission : JSON.stringify(submission)}"
     Rubric: ${config.criteria.map(c => `${c.name} (Wt: ${c.weight}%)`).join(', ')}
     
     Output strictly valid JSON:
@@ -168,7 +171,13 @@ export const evaluateSubmission = async (
     // STRATEGY 1: POLLINATIONS (Primary - Free & Robust)
     try {
         console.log("Engaging Pollinations AI Auto-Grader...");
-        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(prompt + " \nIMPORTANT: Respond ONLY with the raw JSON. Do not use markdown blocks.")}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for responsiveness
+
+        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(prompt + " \nIMPORTANT: Respond ONLY with the raw JSON. Do not use markdown blocks.")}?model=openai&seed=${Math.floor(Math.random() * 1000)}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
             const text = await response.text();

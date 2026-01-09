@@ -33,12 +33,14 @@ export const CharacterCreation: React.FC = () => {
 
   const handleComplete = () => {
     const initialStats: PlayerStats = {
-      skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0 },
+      skillTree: { SEO: 0, Ads: 0, Copy: 0, Analytics: 0, Strategy: 0, Design: 0 },
       reputation: role === 'manager' ? 20 : 10,
       trust: {
         manager: role === 'intern' ? 60 : 40,
         designer: 50,
-        founder: 10
+        founder: 10,
+        media: 40,
+        analyst: 40
       },
       performanceKPIs: {
         roas: 0,

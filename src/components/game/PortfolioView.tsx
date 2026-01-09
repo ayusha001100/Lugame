@@ -199,11 +199,62 @@ export const PortfolioView: React.FC = () => {
             </motion.div>
 
             {/* Certification Status */}
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground border-b border-white/5 pb-3">Department Credentials</h4>
+              <div className="grid gap-3">
+                {[
+                  { id: 'marketing', label: 'Marketing HQ', levels: [1, 2], icon: '📊' },
+                  { id: 'ads', label: 'Ads Lab', levels: [3, 4], icon: '🎯' },
+                  { id: 'content', label: 'Content Studio', levels: [5, 6], icon: '✍️' },
+                  { id: 'creative', label: 'Design Studio', levels: [7, 8], icon: '🎨' },
+                  { id: 'analytics', label: 'Analytics War Room', levels: [9, 10], icon: '📈' },
+                ].map(module => {
+                  const isCompleted = module.levels.every(l => player.completedLevels.includes(l));
+                  return (
+                    <button
+                      key={module.id}
+                      disabled={!isCompleted}
+                      onClick={() => {
+                        useGameStore.getState().setCertificationType(module.id as any);
+                        setScreen('certification');
+                      }}
+                      className={cn(
+                        "w-full p-4 rounded-2xl border flex items-center justify-between transition-all group",
+                        isCompleted 
+                          ? "bg-primary/5 border-primary/20 hover:border-primary/40 cursor-pointer" 
+                          : "bg-muted/20 border-white/5 opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{module.icon}</span>
+                        <div className="text-left">
+                          <div className="text-[10px] font-black uppercase tracking-widest">{module.label}</div>
+                          <div className="text-[8px] font-bold text-muted-foreground uppercase">
+                            {isCompleted ? "Verified Credential" : "Calibration Incomplete"}
+                          </div>
+                        </div>
+                      </div>
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="glass-card rounded-[2.5rem] p-8 bg-gradient-to-br from-primary/10 via-background to-background border-primary/20 relative group hover:border-primary/40 transition-all cursor-pointer overflow-hidden"
-              onClick={() => setScreen('certification')}
+              onClick={() => {
+                if (player.completedLevels.length >= 10) {
+                  useGameStore.getState().setCertificationType('master');
+                  setScreen('certification');
+                }
+              }}
             >
               <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition-opacity">
                 <Award className="w-32 h-32 rotate-12" />
@@ -214,19 +265,19 @@ export const PortfolioView: React.FC = () => {
                     <ShieldCheck className="w-6 h-6 text-primary" />
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-black uppercase text-primary mb-1 block">Credential Score</span>
+                    <span className="text-[10px] font-black uppercase text-primary mb-1 block">Master Score</span>
                     <span className="text-2xl font-black italic">{(player.completedLevels.length / 10 * 100).toFixed(0)}%</span>
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-black italic uppercase tracking-tight">Growth Strategist Certification</h3>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Verified Digital Marketing Honors</p>
+                  <h3 className="text-lg font-black italic uppercase tracking-tight">Master Strategist</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Global Operational Clearance</p>
                 </div>
                 <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-primary" style={{ width: `${(player.completedLevels.length / 10) * 100}%` }} />
                 </div>
-                <Button variant="glow" className="w-full rounded-2xl h-11 text-[10px] font-black uppercase tracking-widest">
-                  {player.completedLevels.length >= 10 ? 'Generate Official Certificate' : `Complete ${10 - player.completedLevels.length} More Missions`}
+                <Button variant="glow" className="w-full rounded-2xl h-11 text-[10px] font-black uppercase tracking-widest" disabled={player.completedLevels.length < 10}>
+                  {player.completedLevels.length >= 10 ? 'Generate Master Certificate' : `Complete ${10 - player.completedLevels.length} More Missions`}
                 </Button>
               </div>
             </motion.div>

@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export const CertificationView: React.FC = () => {
-  const { player, setScreen } = useGameStore();
+  const { player, setScreen, currentCertificateType } = useGameStore();
   const certificateRef = useRef<HTMLDivElement>(null);
 
   if (!player) return null;
@@ -32,6 +32,26 @@ export const CertificationView: React.FC = () => {
   };
 
   const masteryPercentage = (player.completedLevels.length / 10) * 100;
+
+  const getCertificateData = () => {
+    switch (currentCertificateType) {
+      case 'marketing':
+        return { title: 'Marketing Strategist', levels: [1, 2], color: 'text-blue-400' };
+      case 'ads':
+        return { title: 'Paid Media Specialist', levels: [3, 4], color: 'text-red-400' };
+      case 'content':
+        return { title: 'Content Architect', levels: [5, 6], color: 'text-green-400' };
+      case 'creative':
+        return { title: 'Visual Designer', levels: [7, 8], color: 'text-purple-400' };
+      case 'analytics':
+        return { title: 'Data Scientist', levels: [9, 10], color: 'text-amber-400' };
+      default:
+        return { title: 'Master Growth Strategist', levels: Array.from({ length: 10 }, (_, i) => i + 1), color: 'text-primary' };
+    }
+  };
+
+  const cert = getCertificateData();
+  const isMaster = currentCertificateType === 'master' || !currentCertificateType;
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 py-12 px-6 md:px-12 flex flex-col items-center">
@@ -109,13 +129,15 @@ export const CertificationView: React.FC = () => {
             <div className="space-y-6 mb-16 relative z-10 pt-8">
               <div className="flex items-center justify-center gap-4 text-primary">
                 <div className="h-px w-12 bg-primary/30" />
-                <Medal className="w-14 h-14" />
+                <Medal className={cn("w-14 h-14", cert.color)} />
                 <div className="h-px w-12 bg-primary/30" />
               </div>
               <div>
                 <h2 className="text-[12px] font-black uppercase tracking-[0.6em] text-primary/60 mb-2">Diploma of Professional Excellence</h2>
                 <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter uppercase leading-none text-white">
-                  Market<span className="text-primary italic">Craft</span>
+                  {cert.title.split(' ').map((word, i) => (
+                    <span key={i} className={i === 0 ? "text-white" : cn(cert.color, "italic ml-2")}>{word}</span>
+                  ))}
                 </h1>
               </div>
             </div>
@@ -136,7 +158,7 @@ export const CertificationView: React.FC = () => {
 
               <div className="max-w-3xl mx-auto space-y-6">
                 <p className="text-lg md:text-2xl font-medium text-white/70 leading-relaxed italic border-x border-white/5 px-12">
-                  For completing the rigorous <span className="text-primary font-black uppercase tracking-widest">Growth Engine Simulation</span> with full operational clearance.
+                  For completing the rigorous <span className={cn("font-black uppercase tracking-widest", cert.color)}>{cert.title} Challenge</span> with full operational clearance.
                   Demonstrated elite competence in Digital Strategy, Performance Marketing, and Data Architecture.
                 </p>
                 <div className="flex justify-center gap-6">
