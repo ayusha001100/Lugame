@@ -561,7 +561,11 @@ export const OfficeHub: React.FC = () => {
           {OFFICE_ROOMS.map((room, index) => {
             const departmentLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
             const completedInRoom = departmentLevels.filter(l => player.completedLevels.includes(l.id)).length;
-            const isUnlocked = departmentLevels.some(l => isLevelUnlocked(l.id));
+
+            // Special unlock logic for Executive Suite (manager room)
+            const isUnlocked = room.id === 'manager'
+              ? player.completedLevels.length >= 10 // Unlock after completing all 10 levels
+              : departmentLevels.some(l => isLevelUnlocked(l.id));
 
             return (
               <motion.button

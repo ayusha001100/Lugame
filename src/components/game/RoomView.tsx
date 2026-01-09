@@ -27,6 +27,103 @@ export const RoomView: React.FC = () => {
 
   const roomLevels = GAME_LEVELS.filter(l => room.levels.includes(l.id));
 
+  // Special handling for Executive Suite (manager room)
+  if (room.id === 'manager') {
+    return (
+      <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 pb-20">
+        {/* Background System */}
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(234,179,8,0.08)_0%,transparent_50%)] pointer-events-none" />
+
+        {/* Header */}
+        <header className="p-4 md:p-8 lg:px-12 flex items-center justify-between border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-50">
+          <div className="flex items-center gap-4 md:gap-6">
+            <Button
+              variant="glass"
+              size="icon"
+              onClick={() => setScreen('office-hub')}
+              className="rounded-2xl shrink-0 h-10 w-10 md:h-12 md:w-12"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div className="flex flex-col min-w-0">
+              <h2 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] text-primary truncate">Executive Level</h2>
+              <div className="flex items-center gap-2 md:gap-3">
+                <span className="text-xl md:text-3xl">{room.icon}</span>
+                <h1 className="text-lg md:text-2xl font-black italic tracking-tight uppercase truncate">{room.name}</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-4xl mx-auto p-8 md:p-12 space-y-12">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-[3rem] p-10 md:p-16 bg-gradient-to-br from-primary/5 to-transparent border-primary/20 relative overflow-hidden text-center"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(234,179,8,0.1)_0%,transparent_70%)] pointer-events-none" />
+
+            <div className="relative z-10 space-y-8">
+              <div className="w-24 h-24 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Trophy className="w-12 h-12 text-primary" />
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-3xl md:text-5xl font-black italic uppercase tracking-tight">
+                  Congratulations, {player.name}!
+                </h2>
+                <p className="text-lg md:text-xl text-muted-foreground font-medium italic leading-relaxed max-w-2xl mx-auto">
+                  You've completed all 10 strategic missions and proven your marketing mastery.
+                  The executive team is impressed with your performance.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-8 border-y border-border">
+                <div className="space-y-2">
+                  <div className="text-3xl font-black italic text-primary">{player.completedLevels.length}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Missions</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-black italic text-primary">{player.xp}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total XP</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-black italic text-primary">{player.stats.reputation}%</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Reputation</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-3xl font-black italic text-primary">₹{player.stats.performanceKPIs.revenue.toLocaleString()}</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Revenue</div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <Button
+                  variant="glow"
+                  size="xl"
+                  className="w-full max-w-md mx-auto rounded-[2rem] h-16 text-lg font-black italic group"
+                  onClick={() => setScreen('certification')}
+                >
+                  CLAIM YOUR CERTIFICATION
+                  <Star className="w-6 h-6 ml-4 group-hover:rotate-12 transition-transform" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full max-w-md mx-auto rounded-2xl"
+                  onClick={() => setScreen('portfolio')}
+                >
+                  View Career Portfolio
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
+
   const handleLevelClick = (levelId: number) => {
     if (!isLevelUnlocked(levelId)) return;
     setCurrentLevel(levelId);
