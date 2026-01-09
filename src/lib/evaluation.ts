@@ -100,7 +100,7 @@ export const evaluateSubmission = async (
                 case 'rank-order':
                     const userOrder = submission as string[];
                     const correctOrder = taskData.correctOrder || taskData.items || [];
-                    
+
                     if (JSON.stringify(userOrder) === JSON.stringify(correctOrder)) {
                         objectiveScore = 100;
                         isCorrect = true;
@@ -148,11 +148,18 @@ export const evaluateSubmission = async (
 
     // AI EVALUATION PROMPT CONSTRUCTION
     const isRankOrder = config.taskType === 'rank-order';
-    const submissionText = isRankOrder 
+    const submissionText = isRankOrder
         ? `Ranked Order: ${Array.isArray(submission) ? submission.map((s, i) => `${i + 1}. ${s}`).join(', ') : submission}`
         : (typeof submission === 'string' ? submission : JSON.stringify(submission));
 
     const difficultyContext = config.levelId <= 3 ? "NOVICE - Be lenient." : config.levelId < 9 ? "PROFESSIONAL - Be strict but fair." : "ELITE - Be critical.";
+
+    const prompt = `You are an expert marketing evaluator for NovaTech Industries.
+    
+    Task: ${config.levelTitle || 'Marketing Task'}
+    Context: ${config.levelPrompt || 'Evaluate the submission'}
+    Difficulty: ${difficultyContext}
+    Submission: ${submissionText}
     Rubric: ${config.criteria.map(c => `${c.name} (Wt: ${c.weight}%)`).join(', ')}
     
     Output strictly valid JSON:
