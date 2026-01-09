@@ -94,115 +94,179 @@ export const CertificationView: React.FC = () => {
       </header>
 
       <main className="w-full max-w-6xl space-y-16 relative z-10">
-        {/* THE HOLOGRAPHIC CERTIFICATE */}
+        {/* THE PREMIUM CERTIFICATE */}
         <motion.div
           initial={{ opacity: 0, y: 40, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="relative group "
+          className="relative group"
         >
-          {/* Outer Glow */}
-          <div className="absolute inset-0 bg-primary/20 blur-[120px] -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          {/* Outer Premium Glow */}
+          <div className="absolute -inset-8 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 blur-3xl opacity-50 group-hover:opacity-70 transition-opacity duration-1000" />
 
           <div
             ref={certificateRef}
-            className="bg-[#0a0a0a] border-[12px] border-double border-white/10 p-12 md:p-24 rounded-[0.5rem] relative overflow-hidden aspect-[1.414/1] flex flex-col items-center text-center shadow-[0_0_100px_rgba(0,0,0,0.5)]"
+            className="relative bg-gradient-to-br from-[#1a1a1a] via-[#0f0f0f] to-[#0a0a0a] rounded-sm overflow-hidden shadow-[0_20px_100px_rgba(0,0,0,0.8)]"
           >
-            {/* Holographic Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diamond-upholstery.png')] opacity-[0.02] pointer-events-none" />
+            {/* Ornate Border System */}
+            <div className="absolute inset-0 pointer-events-none">
+              {/* Outer Border - Gold */}
+              <div className="absolute inset-0 border-[3px] border-primary/40" />
 
-            {/* Corner Emblems */}
-            <div className="absolute top-0 left-0 p-12 opacity-20">
-              <Cpu className="w-12 h-12 text-primary" />
-            </div>
-            <div className="absolute top-0 right-0 p-12 opacity-20 text-right">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em]">Institutional Grade</div>
-              <div className="text-[10px] font-bold opacity-50 uppercase">Serial: MC-{player.id.substring(0, 6).toUpperCase()}</div>
-            </div>
+              {/* Inner Border - Double Line */}
+              <div className="absolute inset-[12px] border-[1.5px] border-primary/20" />
+              <div className="absolute inset-[18px] border-[0.5px] border-primary/10" />
 
-            {/* Center Seal Watermark */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none select-none">
-              <ShieldCheck className="w-[45rem] h-[45rem]" />
-            </div>
+              {/* Decorative Corners */}
+              <div className="absolute top-0 left-0 w-32 h-32 border-t-[3px] border-l-[3px] border-primary/60" />
+              <div className="absolute top-0 right-0 w-32 h-32 border-t-[3px] border-r-[3px] border-primary/60" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 border-b-[3px] border-l-[3px] border-primary/60" />
+              <div className="absolute bottom-0 right-0 w-32 h-32 border-b-[3px] border-r-[3px] border-primary/60" />
 
-            {/* Header Content */}
-            <div className="space-y-6 mb-16 relative z-10 pt-8">
-              <div className="flex items-center justify-center gap-4 text-primary">
-                <div className="h-px w-12 bg-primary/30" />
-                <Medal className={cn("w-14 h-14", cert.color)} />
-                <div className="h-px w-12 bg-primary/30" />
-              </div>
-              <div>
-                <h2 className="text-[12px] font-black uppercase tracking-[0.6em] text-primary/60 mb-2">Diploma of Professional Excellence</h2>
-                <h1 className="text-5xl md:text-8xl font-black italic tracking-tighter uppercase leading-none text-white">
-                  {cert.title.split(' ').map((word, i) => (
-                    <span key={i} className={i === 0 ? "text-white" : cn(cert.color, "italic ml-2")}>{word}</span>
-                  ))}
-                </h1>
-              </div>
+              {/* Corner Ornaments */}
+              <div className="absolute top-6 left-6 w-6 h-6 border-2 border-primary/40 rotate-45" />
+              <div className="absolute top-6 right-6 w-6 h-6 border-2 border-primary/40 rotate-45" />
+              <div className="absolute bottom-6 left-6 w-6 h-6 border-2 border-primary/40 rotate-45" />
+              <div className="absolute bottom-6 right-6 w-6 h-6 border-2 border-primary/40 rotate-45" />
             </div>
 
-            {/* Core Body */}
-            <div className="space-y-12 flex-1 flex flex-col justify-center relative z-10">
-              <div className="space-y-4">
-                <p className="text-[13px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">This high-standing credential is awarded to</p>
-                <motion.h3
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-6xl md:text-9xl font-black italic text-white tracking-tighter uppercase leading-none drop-shadow-2xl"
-                >
-                  {player.name}
-                </motion.h3>
-              </div>
+            {/* Premium Background Texture */}
+            <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }} />
 
-              <div className="max-w-3xl mx-auto space-y-6">
-                <p className="text-lg md:text-2xl font-medium text-white/70 leading-relaxed italic border-x border-white/5 px-12">
-                  For completing the rigorous <span className={cn("font-black uppercase tracking-widest", cert.color)}>{cert.title} Challenge</span> with full operational clearance.
-                  Demonstrated elite competence in Digital Strategy, Performance Marketing, and Data Architecture.
-                </p>
-                <div className="flex justify-center gap-6">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-                    <Zap className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{player.xp} XP Accumulated</span>
+            {/* Radial Gradient Overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(234,179,8,0.03)_0%,transparent_70%)]" />
+
+            {/* Certificate Content */}
+            <div className="relative p-16 md:p-24 lg:p-32 aspect-[1.414/1] flex flex-col">
+
+              {/* Header Section */}
+              <div className="text-center space-y-8 mb-12">
+                {/* Top Seal */}
+                <div className="flex items-center justify-center gap-6">
+                  <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+                  <div className="relative">
+                    <div className="w-20 h-20 rounded-full border-4 border-primary/30 flex items-center justify-center bg-gradient-to-br from-primary/10 to-transparent shadow-[0_0_30px_rgba(234,179,8,0.2)]">
+                      <Medal className="w-10 h-10 text-primary" />
+                    </div>
+                    <div className="absolute -inset-2 rounded-full border border-primary/10" />
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-                    <Star className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Rank: {player.role}</span>
+                  <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+                </div>
+
+                {/* Institution Header */}
+                <div className="space-y-3">
+                  <h2 className="text-[11px] font-black uppercase tracking-[0.5em] text-primary/70 letterspacing">
+                    Diploma of Professional Excellence
+                  </h2>
+                  <div className="h-[1px] w-48 mx-auto bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+                </div>
+
+                {/* Certificate Title */}
+                <div className="space-y-4">
+                  <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight leading-tight">
+                    <span className="text-white/90">Master </span>
+                    <span className={cn("bg-gradient-to-r from-primary via-amber-400 to-primary bg-clip-text text-transparent", cert.color)}>
+                      Growth Strategist
+                    </span>
+                  </h1>
+                </div>
+              </div>
+
+              {/* Body Section */}
+              <div className="flex-1 flex flex-col justify-center space-y-10 text-center">
+                <div className="space-y-6">
+                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/50">
+                    This credential is hereby conferred upon
+                  </p>
+
+                  {/* Recipient Name */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="relative py-6"
+                  >
+                    <h3 className="text-5xl md:text-7xl lg:text-8xl font-serif italic text-white tracking-tight leading-none">
+                      {player.name}
+                    </h3>
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-96 h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+                  </motion.div>
+                </div>
+
+                {/* Achievement Description */}
+                <div className="max-w-3xl mx-auto space-y-6">
+                  <p className="text-base md:text-lg font-serif text-white/70 leading-relaxed px-8">
+                    For demonstrating exceptional mastery in completing the rigorous{' '}
+                    <span className="font-bold text-primary">Master Growth Strategist Challenge</span>,
+                    encompassing Digital Strategy, Performance Marketing, Creative Development, and Data Architecture.
+                  </p>
+
+                  {/* Achievement Badges */}
+                  <div className="flex justify-center gap-4 pt-4">
+                    <div className="px-5 py-2.5 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary">{player.xp} XP</span>
+                      </div>
+                    </div>
+                    <div className="px-5 py-2.5 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm">
+                      <div className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary">{player.role}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer / Authenticators */}
-            <div className="w-full flex items-end justify-between mt-16 relative z-10 px-8">
-              <div className="flex flex-col items-start gap-4">
-                <div className="space-y-2">
-                  <div className="h-px w-56 bg-white/10" />
-                  <p className="text-[11px] font-black uppercase tracking-widest text-white/90">Elena Vasquez</p>
-                  <p className="text-[9px] font-bold uppercase tracking-tighter text-primary/60">Lead Architect, NovaTech Ecosystem</p>
-                </div>
-                <div className="text-[9px] font-black uppercase text-white/20 font-mono tracking-widest">
-                  VERIFICATION_HASH: {player.id.toUpperCase()}
-                </div>
-              </div>
+              {/* Footer Section - Signatures & Seal */}
+              <div className="mt-auto pt-16">
+                <div className="grid grid-cols-3 gap-8 items-end">
+                  {/* Left Signature */}
+                  <div className="text-left space-y-3">
+                    <div className="h-[1px] w-full bg-gradient-to-r from-primary/30 to-transparent" />
+                    <div>
+                      <p className="text-sm font-semibold text-white/90 tracking-wide">Elena Vasquez</p>
+                      <p className="text-[10px] font-medium text-primary/60 uppercase tracking-wider">Lead Architect</p>
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest mt-1">NovaTech Ecosystem</p>
+                    </div>
+                  </div>
 
-              <div className="w-40 h-40 relative flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-2 border-dashed border-primary/20 animate-spin-slow" />
-                <div className="absolute inset-4 rounded-full border border-primary/10" />
-                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-primary/20 to-transparent flex items-center justify-center border-2 border-primary/30 shadow-[0_0_30px_rgba(234,179,8,0.2)]">
-                  <ShieldCheck className="w-14 h-14 text-primary drop-shadow-[0_0_10px_rgba(234_179,8,0.5)]" />
-                </div>
-              </div>
+                  {/* Center Seal */}
+                  <div className="flex justify-center">
+                    <div className="relative w-32 h-32">
+                      {/* Rotating Border */}
+                      <div className="absolute inset-0 rounded-full border-2 border-dashed border-primary/20 animate-spin-slow" />
 
-              <div className="flex flex-col items-end gap-4">
-                <div className="space-y-2 text-right">
-                  <div className="h-px w-56 bg-white/10" />
-                  <p className="text-[11px] font-black uppercase tracking-widest text-white/90">Vikram Singh</p>
-                  <p className="text-[9px] font-bold uppercase tracking-tighter text-primary/60">Executive Oversight, MarketCraft</p>
+                      {/* Seal Background */}
+                      <div className="absolute inset-3 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/40 shadow-[0_0_40px_rgba(234,179,8,0.3)]">
+                        <div className="absolute inset-0 rounded-full flex items-center justify-center">
+                          <ShieldCheck className="w-16 h-16 text-primary drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]" />
+                        </div>
+                      </div>
+
+                      {/* Seal Text Ring */}
+                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-primary/60">Official Seal</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Signature */}
+                  <div className="text-right space-y-3">
+                    <div className="h-[1px] w-full bg-gradient-to-l from-primary/30 to-transparent" />
+                    <div>
+                      <p className="text-sm font-semibold text-white/90 tracking-wide">Vikram Singh</p>
+                      <p className="text-[10px] font-medium text-primary/60 uppercase tracking-wider">Executive Director</p>
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest mt-1">MarketCraft Institute</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[9px] font-black uppercase text-white/20 font-mono tracking-widest">
-                  TIMESTAMP: {new Date().toISOString().substring(0, 10).replaceAll('-', '.')}
+
+                {/* Bottom Metadata */}
+                <div className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center text-[9px] font-mono text-white/20 uppercase tracking-widest">
+                  <div>Certificate ID: MC-{player.id.substring(0, 8).toUpperCase()}</div>
+                  <div>Issued: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                  <div>Verification: {player.id.substring(0, 6).toUpperCase()}</div>
                 </div>
               </div>
             </div>
