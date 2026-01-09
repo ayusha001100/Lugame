@@ -96,14 +96,14 @@ interface GameState {
   earnRetryToken: () => void;
 }
 
-const STAMINA_REGEN_TIME = 15 * 1000; // 15 seconds for energy regen
-const LIFE_REGEN_TIME = 120 * 1000; // 2 minutes for 1 life point
+const STAMINA_REGEN_TIME = 5 * 1000; // 5 seconds for energy regen
+const LIFE_REGEN_TIME = 300 * 1000; // 5 minutes for 1 life point
 const MAX_STAMINA = 100;
 const MAX_LIVES = 3;
 const LEVEL_STAMINA_COST = 10;
-export const ENERGY_COST_PER_TASK = 15;
-const STIPEND_PENALTY_EARLY_CLOCK_OUT = 200; // Penalty for clocking out before 6 PM
-const ENERGY_REGEN_AMOUNT = 10; // 10% regen every 15s
+export const ENERGY_COST_PER_TASK = 9; // 9% decrease per task as requested
+const STIPEND_PENALTY_EARLY_CLOCK_OUT = 200; 
+const ENERGY_REGEN_AMOUNT = 25; // 25% regen every 5s
 
 const formatTime = (totalMinutes: number) => {
   const hours = Math.floor(totalMinutes / 60) % 24;
@@ -397,53 +397,45 @@ export const useGameStore = create<GameState>()(
         const level = GAME_LEVELS.find(l => l.id === levelId);
         const phase = level?.phases?.find(ph => ph.id === phaseId);
 
+        const stipendBonus = phase?.stipendReward || 0;
+        if (result.passed && stipendBonus > 0) updatedKPIs.stipend += stipendBonus;
+
+        const newGrowthData = [...get().growthData, {
+          day: currentP.worldState.currentDay,
+          timestamp: Date.now(),
+          revenue: updatedKPIs.revenue,
+          leads: updatedKPIs.leads,
+          type: 'phase'
+        }].slice(-100);
+
+        const currentCompleted = currentP.completedPhases?.[levelId] || [];
+        const updatedPhases = (result.passed && !currentCompleted.includes(phaseId)) ? {
+          ...(currentP.completedPhases || {}),
+          [levelId]: [...currentCompleted, phaseId]
+        } : currentP.completedPhases;
+
+        set({
+          growthData: newGrowthData,
+          player: {
+            ...currentP,
+            tokens: currentP.tokens + (result.passed ? 2 : 0),
+            completedPhases: updatedPhases,
+            lives: !result.passed ? Math.max(0, currentP.lives - 1) : currentP.lives,
+            lastLifeLostAt: !result.passed ? new Date() : currentP.lastLifeLostAt,
+            stats: {
+              ...currentP.stats,
+              performanceKPIs: updatedKPIs,
+              energy: Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK), // Decrease regardless
+              reputation: result.passed ? Math.min(100, currentP.stats.reputation + 1) : currentP.stats.reputation
+            },
+            lastStaminaRegenAt: new Date()
+          }
+        });
+
         if (result.passed) {
-          // Calculate all changes based on the most current state values
-          const currentP = get().player;
-          if (!currentP) return;
-
-          const updatedKPIs = {
-            ...currentP.stats.performanceKPIs,
-            ...(result.kpiImpact || {})
-          };
-
-          const stipendBonus = phase?.stipendReward || 0;
-          if (stipendBonus > 0) updatedKPIs.stipend += stipendBonus;
-
-          const newGrowthData = [...get().growthData, {
-            day: currentP.worldState.currentDay,
-            timestamp: Date.now(),
-            revenue: updatedKPIs.revenue,
-            leads: updatedKPIs.leads,
-            type: 'phase'
-          }].slice(-100);
-
-          const currentCompleted = currentP.completedPhases?.[levelId] || [];
-          const updatedPhases = !currentCompleted.includes(phaseId) ? {
-            ...(currentP.completedPhases || {}),
-            [levelId]: [...currentCompleted, phaseId]
-          } : currentP.completedPhases;
-
-          set({
-            growthData: newGrowthData,
-            player: {
-              ...currentP,
-              tokens: currentP.tokens + 2,
-              completedPhases: updatedPhases,
-              stats: {
-                ...currentP.stats,
-                performanceKPIs: updatedKPIs,
-                energy: Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK),
-                reputation: Math.min(100, currentP.stats.reputation + 1)
-              },
-              lastStaminaRegenAt: new Date()
-            }
-          });
-
           toast.success("Mission Intel synced. +2 Credits earned.");
         } else {
-          // Handle Failure
-          get().loseLife();
+          toast.error("Phase failed. 1 Life lost.");
         }
       },
 
@@ -465,7 +457,7 @@ export const useGameStore = create<GameState>()(
           if (!p.lastStaminaRegenAt) {
             updates.lastStaminaRegenAt = new Date();
           } else {
-            const last = new Date(p.lastStaminaRegenAt).getTime();
+        const last = new Date(p.lastStaminaRegenAt).getTime();
             const cycles = Math.floor((now - last) / STAMINA_REGEN_TIME);
             if (cycles > 0) {
               const newEnergy = Math.min(MAX_STAMINA, p.stats.energy + (cycles * ENERGY_REGEN_AMOUNT));
@@ -558,7 +550,7 @@ export const useGameStore = create<GameState>()(
             stats: {
               ...currentP.stats,
               performanceKPIs: updatedKPIs,
-              energy: passed ? Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK) : currentP.stats.energy,
+              energy: Math.max(0, currentP.stats.energy - ENERGY_COST_PER_TASK), // Decrease regardless
               reputation: Math.min(100, currentP.stats.reputation + (portfolioItem.score >= 80 ? 5 : 2)),
               skillTree: {
                 ...currentP.stats.skillTree,

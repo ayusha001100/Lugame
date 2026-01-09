@@ -173,64 +173,60 @@ export const CreativeLevelPlay: React.FC = () => {
   };
 
   const handleSubmit = async (imageData: string, elements: CanvasElementData[]) => {
-    if (!level) return;
+    if (!level || !player) return;
 
     setIsEvaluating(true);
     playSfx('click');
+    toast.info("Processing your design...");
 
     try {
-      const data = await evaluateCreativeSubmission(elements, {
-        levelId: level.id,
-        criteria: level.rubric.criteria,
-        passingScore: level.rubric.passingScore,
-        levelTitle: level.title,
-        levelPrompt: level.taskPrompt,
-        taskData: level.taskData || {}
-      });
+      // 1. Skip Firebase Storage as requested - artifacts will be local only
+      const artifactUrl = imageData; 
 
+      // 2. Automated Pass - No strict judging as requested
       const evaluation = {
-        score: data.score,
-        passed: data.passed,
-        feedback: data.feedback,
-        strengths: data.strengths || [],
-        fixes: data.fixes || [],
-        redoSuggestions: data.redoSuggestions || [],
-        nextBestAction: data.nextBestAction || "Advance to next module",
-        criteriaScores: data.criteriaScores,
-        improvement: data.improvement,
-        canRetry: currentAttempt < level.rubric.maxAttempts,
-        attemptsLeft: level.rubric.maxAttempts - currentAttempt
+        score: 95,
+        passed: true,
+        feedback: "Design successfully synthesized. Your creative logic has been logged in the mission archives.",
+        strengths: ["Creative Execution", "Visual Alignment"],
+        fixes: [],
+        redoSuggestions: [],
+        nextBestAction: "Advance to next module",
+        criteriaScores: level.rubric.criteria.map(c => ({ name: c.name, score: 95, feedback: "Met mission requirements." })),
+        improvement: "Perfectly executed.",
+        canRetry: false,
+        attemptsLeft: 0
       };
 
       setEvaluation(evaluation as any);
 
-      if (data.passed) {
-        playSfx('success');
-        addXP(level.xpReward);
-        const isFirstTry = currentAttempt === 1;
-        completeLevel(level.id, {
-          levelId: level.id,
-          title: level.title,
-          category: 'Creative',
-          content: `[Creative Banner Design]\nElements: ${elements.length}\nTime: ${formatTime(TIMER_DURATIONS[difficulty] - (timeLeft || 0))}`,
-          score: data.score,
-          feedback: evaluation as any,
-          completedAt: new Date(),
-          isPublished: false
-        }, isFirstTry);
-      } else {
-        playSfx('failure');
-        useGameStore.getState().loseLife();
-        if (evaluation.canRetry) {
-          incrementAttempt();
-        }
-      }
+      // 3. Save to local portfolio and advance
+      playSfx('success');
+      addXP(level.xpReward);
+      const isFirstTry = currentAttempt === 1;
 
+      completeLevel(level.id, {
+        levelId: level.id,
+        title: level.title,
+        category: 'Creative',
+        content: {
+          elements: elements,
+          elementCount: elements.length,
+          timeSpent: TIMER_DURATIONS[difficulty] - (timeLeft || 0),
+        },
+        artifactUrl: artifactUrl, 
+        score: 95,
+        feedback: evaluation as any,
+        completedAt: new Date(),
+        isPublished: true
+      }, isFirstTry);
+
+      toast.success("Design archived. Module complete!");
       setScreen('evaluation');
 
     } catch (error) {
-      console.error('Evaluation error:', error);
-      toast.error('Failed to evaluate design. Please try again.');
+      console.error('Submission error:', error);
+      toast.error('Failed to process design.');
     } finally {
       setIsEvaluating(false);
     }

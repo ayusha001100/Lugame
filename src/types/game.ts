@@ -75,6 +75,7 @@ export interface MarketingKPIs {
   revenue: number; // Added for Simulation (Module 8)
   stipend: number;
   reputation?: number;
+  ctr?: number; // Click Through Rate percentage
 }
 
 export interface WorldState {
@@ -169,7 +170,7 @@ export interface GameLevel {
 
 export interface LevelPhase {
   id: string;
-  type: 'diagnose' | 'build' | 'improve' | 'assessment';
+  type: 'diagnose' | 'build' | 'improve' | 'assessment'; // 'strategy' was invalid, ensures 'assessment' covers it
   title: string;
   description: string;
   taskType: TaskType;

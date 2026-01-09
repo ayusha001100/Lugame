@@ -134,12 +134,21 @@ export const evaluateSubmission = async (
     }
 
     // AI EVALUATION PROMPT CONSTRUCTION
-    const difficultyContext = config.levelId <= 3 ? "NOVICE - Be lenient." : config.levelId <= 7 ? "PROFESSIONAL - Be strict." : "ELITE - Be critical.";
+    // REVISED: Shift "Elite" to Level 9+ so the Banner Forge (Lvl 8) is graded as "Professional" (Fair but Verified) rather than "Critical".
+    const difficultyContext = config.levelId <= 3 ? "NOVICE - Be lenient." : config.levelId < 9 ? "PROFESSIONAL - Be strict but fair." : "ELITE - Be critical.";
+
+    // Special handling for Creative Tasks to ensure "Accurate Marks" based on elements
+    const isCreative = config.taskType === 'creative-canvas';
+    const creativeContext = isCreative ?
+        "IMPORTANT: Evaluate based on the PRESENCE of required elements (CTA, Headline, Colors) in the JSON data. Do not judge 'beauty', judge 'functional requirements'." : "";
 
     // Condensed prompt for stability
     const prompt = `
     Role: Elite Marketing Director. Task: Evaluate this intern submission.
     Context: ${config.levelTitle} - ${config.levelPrompt}
+    Difficulty: ${difficultyContext}
+    ${creativeContext}
+
     Submission: "${typeof submission === 'string' ? submission : JSON.stringify(submission)}"
     Rubric: ${config.criteria.map(c => `${c.name} (Wt: ${c.weight}%)`).join(', ')}
     
@@ -156,49 +165,78 @@ export const evaluateSubmission = async (
     }
     `;
 
-    // STRATEGY: ALWAYS USE POLLINATIONS (Free, No Auth)
+    // STRATEGY 1: POLLINATIONS (Primary - Free & Robust)
     try {
         console.log("Engaging Pollinations AI Auto-Grader...");
-
-        // Use 'openai' model alias on Pollinations for best reasoning
         const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(prompt + " \nIMPORTANT: Respond ONLY with the raw JSON. Do not use markdown blocks.")}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
 
-        if (!response.ok) throw new Error("Pollinations Service Unavailable");
+        if (response.ok) {
+            const text = await response.text();
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            const jsonStr = jsonMatch ? jsonMatch[0] : text;
+            const result = JSON.parse(jsonStr);
 
-        const text = await response.text();
-
-        // Sanitize JSON (remove markdown backticks if present)
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        const jsonStr = jsonMatch ? jsonMatch[0] : text;
-        const result = JSON.parse(jsonStr);
-
-        // Sanity Check Result
-        if (typeof result.score !== 'number') result.score = 70; // Fallback safety
-
-        return {
-            score: result.score,
-            passed: result.score >= (config.passingScore || 60),
-            feedback: result.feedback || "Evaluation complete.",
-            strengths: result.strengths || [],
-            fixes: result.fixes || [],
-            redoSuggestions: [],
-            nextBestAction: result.score >= 60 ? "Advance" : "Retry",
-            criteriaScores: result.criteriaScores || [],
-            improvement: "Focus on strategic depth.",
-            managerMood: result.managerMood || 'neutral',
-            managerMessage: result.managerMessage || "Review your data.",
-            kpiImpact: {
-                conversionRate: (result.score / 100) * 1.5,
-                leads: Math.floor((result.score / 100) * 120),
-                roas: (result.score / 100) * 0.8,
-                revenue: Math.floor((result.score / 100) * 6000)
+            if (typeof result.score === 'number') {
+                return {
+                    ...result,
+                    passed: result.score >= (config.passingScore || 60),
+                    feedback: result.feedback || "Evaluation complete.",
+                    strengths: result.strengths || [],
+                    fixes: result.fixes || [],
+                    redoSuggestions: [],
+                    nextBestAction: result.score >= 60 ? "Advance" : "Retry",
+                    criteriaScores: result.criteriaScores || [],
+                    improvement: "Focus on strategic depth.",
+                    managerMood: result.managerMood || 'neutral',
+                    managerMessage: result.managerMessage || "Review your data.",
+                    kpiImpact: {
+                        conversionRate: (result.score / 100) * 1.5,
+                        leads: Math.floor((result.score / 100) * 120),
+                        roas: (result.score / 100) * 0.8,
+                        revenue: Math.floor((result.score / 100) * 6000)
+                    }
+                };
             }
-        };
-
+        }
     } catch (e) {
-        console.error("Pollinations Evaluator failed:", e);
-        return fallbackEvaluation(submission, config, taskData);
+        console.warn("Pollinations failed, attempting Gemini fallback...");
     }
+
+    // STRATEGY 2: TRY GEMINI (Secondary Fallback)
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (apiKey && apiKey.length > 10) {
+        const MODELS = ["gemini-1.5-flash", "gemini-pro"];
+        for (const model of MODELS) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 1000 }
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const result = JSON.parse(data.candidates[0].content.parts[0].text);
+                    return {
+                        ...result,
+                        kpiImpact: {
+                            conversionRate: (result.score / 100) * 2,
+                            leads: Math.floor((result.score / 100) * 100),
+                            roas: (result.score / 100) * 0.5,
+                            revenue: Math.floor((result.score / 100) * 5000)
+                        }
+                    };
+                }
+            } catch (e) {
+                console.warn(`Gemini Model ${model} failed...`, e);
+            }
+        }
+    }
+
+    return fallbackEvaluation(submission, config, taskData);
 };
 
 const fallbackEvaluation = async (submission: any, config: any, taskData: any): Promise<EvaluationResultData> => {

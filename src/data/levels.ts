@@ -90,7 +90,7 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 300,
-    stipendReward: 500,
+    stipendReward: 800,
     isPremium: false,
     simulationImpact: { conversionRate: 1.5 },
   },
@@ -160,7 +160,7 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 150,
-    stipendReward: 300,
+    stipendReward: 500,
     isPremium: false,
     simulationImpact: { conversionRate: 1.0 },
   },
@@ -229,7 +229,7 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 250,
-    stipendReward: 250,
+    stipendReward: 400,
     isPremium: false,
     simulationImpact: { roas: 0.2 },
   },
@@ -280,7 +280,7 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 500,
-    stipendReward: 500,
+    stipendReward: 700,
     isPremium: true,
     simulationImpact: { roas: 0.5, budgetSpent: 5000 },
   },
@@ -333,7 +333,7 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 350,
-    stipendReward: 400,
+    stipendReward: 600,
     isPremium: false,
     simulationImpact: { leads: 100, conversionRate: 0.5 },
   },
@@ -384,9 +384,219 @@ export const GAME_LEVELS: GameLevel[] = [
       }
     },
     xpReward: 500,
-    stipendReward: 600,
+    stipendReward: 800,
     isPremium: true,
     simulationImpact: { leads: 500, reputation: 5 },
+  },
+  {
+    id: 7,
+    title: "DESIGN ALCHEMY",
+    subtitle: "Visual Hierarchy & Psychology",
+    description: "Master the unseen rules of visual persuasion.",
+    room: 'creative',
+    npcName: "Leo Vane",
+    npcRole: "Creative Director",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "Before you touch a canvas, you must understand the eye. Where does it look? Why? Let's test your visual instincts.",
+        emotion: 'serious'
+      }
+    ],
+    phases: [
+      {
+        id: 'phase-7-a',
+        type: 'diagnose',
+        title: "The Z-Pattern",
+        description: "Identify how users scan a creative asset.",
+        taskType: 'mcq',
+        evaluationMode: 'exact_match',
+        taskData: {
+          options: [
+            "Top-left -> Bottom-right (Z-Pattern)",
+            "Center -> Outwards (Radial)",
+            "Bottom-up (Reverse Gravity)",
+            "Random Scattering"
+          ],
+          correct: "Top-left -> Bottom-right (Z-Pattern)"
+        },
+        taskPrompt: "For a standard landing page or banner, what is the natural scanning path of the human eye?",
+        stipendReward: 300
+      },
+      {
+        id: 'phase-7-b',
+        type: 'build',
+        title: "Color Psychology",
+        description: "Select the right palette for trust.",
+        taskType: 'mcq',
+        evaluationMode: 'exact_match',
+        taskData: {
+          options: ["Red & Black", "Blue & White", "Neon Green & Pink", "Brown & Grey"],
+          correct: "Blue & White"
+        },
+        taskPrompt: "Which color combination psychology strongly correlates with 'Trust, Security, and Technology' (e.g., Banks, SaaS)?",
+        stipendReward: 300
+      }
+    ],
+    difficulty: 'medium',
+    competencies: ["Visual Design", "Color Theory", "UX Psychology"],
+    rubric: {
+      criteria: [
+        { name: "Theory", description: "Understanding of visual rules", weight: 100, examples: { good: "Correct principles", bad: "Guessing" } }
+      ],
+      passingScore: 80,
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "You see what others ignore. The eye can be guided. Never forget that.",
+        medium: "Correct, but hesitate less. Design decisions must be absolute.",
+        low: "No. You're designing for chaos. Design for the eye."
+      }
+    },
+    xpReward: 400,
+    stipendReward: 700,
+    isPremium: false,
+    simulationImpact: { conversionRate: 0.8 },
+  },
+  {
+    id: 8,
+    title: "THE BANNER FORGE",
+    subtitle: "High-CTR Creative Construction",
+    description: "Assemble a high-performance ad creative from raw components.",
+    room: 'creative',
+    npcName: "Leo Vane",
+    npcRole: "Creative Director",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "Theory is over. Here are the assets. Build me a banner that screams 'CLICK ME' but whispers 'TRUST ME'. You have 5 minutes.",
+        emotion: 'excited'
+      }
+    ],
+    phases: [], // Single canvas task
+    taskType: 'creative-canvas', // Special Task Type
+    taskPrompt: "Design a 800x450 LinkedIn Ad for 'NovaMind Enterprise'. \n\nREQUIREMENTS:\n1. Headline: Must mention 'AI Automation'.\n2. Visual: Use a Blue/Tech aesthetic (Trust).\n3. CTA: A clear, high-contrast button.\n4. Layout: Follow the Z-pattern (Logo top-left, CTA bottom-right or center).",
+    taskHints: ["Use strong contrast for the CTA button", "Keep text minimal (< 20% of image)", "Blue builds trust for B2B"],
+    difficulty: 'hard',
+    competencies: ["Creative Composition", "Ad Design", "Brand Consistency"],
+    rubric: {
+      criteria: [
+        { name: "Hierarchy", description: "Clear Z-pattern flow", weight: 40, examples: { good: "Z-Pattern maintained", bad: "Cluttered layout" } },
+        { name: "Contrast", description: "CTA stands out", weight: 30, examples: { good: "High contrast", bad: "Invisible button" } },
+        { name: "Relevance", description: "Matches B2B Tech aesthetic", weight: 30, examples: { good: "Blue/Tech vibe", bad: "Neon party" } }
+      ],
+      passingScore: 70,
+      maxAttempts: 3,
+      feedbackDialogues: {
+        high: "This is professional grade. It balances information density with visual breathing room. Ship it.",
+        medium: "It works, but it lacks 'pop'. The CTA could be larger, or the headline punchier. Good enough for v1.",
+        low: "It's cluttered. The eye doesn't know where to land. Simplify. Then simplify again."
+      }
+    },
+    xpReward: 800,
+    stipendReward: 1500,
+    isPremium: true,
+    simulationImpact: { ctr: 0.5, roas: 0.3 },
+  },
+  {
+    id: 9,
+    title: "DATA RECONNAISSANCE",
+    subtitle: "Metric Literacy",
+    description: "Decipher the dashboard to find hidden leaks.",
+    room: 'analytics',
+    npcName: "Alex Chen",
+    npcRole: "Data Scientist",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "Creativity wins attention, but data keeps the lights on. Let's see if you can read the matrix.",
+        emotion: 'serious'
+      }
+    ],
+    phases: [
+      {
+        id: 'phase-9-a',
+        type: 'diagnose',
+        title: "The Leak Hunter",
+        description: "Find where the funnel is breaking.",
+        taskType: 'mcq',
+        evaluationMode: 'exact_match',
+        taskData: {
+          options: [
+            "High CPM (Cost Per Mille)",
+            "Low CTR (Click Through Rate)",
+            "Low Landing Page Conversion Rate",
+            "High Checkout Churn"
+          ],
+          correct: "Low Landing Page Conversion Rate"
+        },
+        taskPrompt: "Scenario: Ads have high CTR (2.5%) and low CPC ($0.50), but ROAS is 0.5. Where is the most likely failure point?",
+        stipendReward: 400
+      }
+    ],
+    difficulty: 'hard',
+    competencies: ["Data Analysis", "Funnel Optimization", "Problem Solving"],
+    rubric: {
+      criteria: [{ name: "Analysis", description: "Correct Metric ID", weight: 100, examples: { good: "Identified Leak", bad: "Wrong Metric" } }],
+      passingScore: 80,
+      maxAttempts: 2,
+      feedbackDialogues: {
+        high: "Precision analysis. You identified the bottleneck immediately.",
+        medium: "Correct, but faster identification is key in live ops.",
+        low: "Incorrect. You're blaming the ad when the landing page is the problem."
+      }
+    },
+    xpReward: 600,
+    stipendReward: 1000,
+    isPremium: false,
+    simulationImpact: { conversionRate: 1.0 },
+  },
+  {
+    id: 10,
+    title: "THE GROWTH ENGINE",
+    subtitle: "Full-Funnel Optimization",
+    description: "Orchestrate a complete campaign turnaround.",
+    room: 'analytics',
+    npcName: "Alex Chen",
+    npcRole: "Data Scientist",
+    npcDialogue: [
+      {
+        id: 'start',
+        text: "This is the final test before management. Fix the entire funnel. Do not fail.",
+        emotion: 'serious'
+      }
+    ],
+    phases: [
+      {
+        id: 'phase-10-a',
+        type: 'assessment',
+        title: "The Turnaround",
+        description: "Prioritize your optimization roadmap.",
+        taskType: 'rank-order',
+        evaluationMode: 'exact_match',
+        taskData: {
+          items: ["Fix Broken Checkout", "Improve Ad Creative CTR", "Optimize Landing Page Headline", "Scale Budget"],
+          correctOrder: ["Fix Broken Checkout", "Improve Ad Creative CTR", "Optimize Landing Page Headline", "Scale Budget"] // Simplified check logic
+        },
+        taskPrompt: "Rank these actions in order of priority: 1 (Highest Priority) to 4 (Lowest Priority). Hint: Fix the leaks closest to the money first.",
+        stipendReward: 1000
+      }
+    ],
+    difficulty: 'hard',
+    competencies: ["Growth Strategy", "Prioritization", "Executive Decision Making"],
+    rubric: {
+      criteria: [{ name: "Prioritization", description: "Logic of money flow", weight: 100, examples: { good: "Checkout First", bad: "Scaling First" } }],
+      passingScore: 100,
+      maxAttempts: 1,
+      feedbackDialogues: {
+        high: "Perfect. You fix the bucket before you turn on the hose. You are ready for the executive suite.",
+        medium: "Close, but your order risks burning cash.",
+        low: "Disastrous. You scaled budget into a broken funnel. You're fired."
+      }
+    },
+    xpReward: 1000,
+    stipendReward: 3000,
+    isPremium: true,
+    simulationImpact: { revenue: 5000, reputation: 20 },
   }
 ];
 
@@ -417,6 +627,15 @@ export const OFFICE_ROOMS: Room[] = [
     levels: [5, 6],
     unlocked: true,
     image: roomContentImg
+  },
+  {
+    id: 'creative',
+    name: 'Design Studio',
+    description: 'Craft high-converting visual assets',
+    icon: '🎨',
+    levels: [7, 8],
+    unlocked: true, // Logic in GameStore will handle checking previous levels
+    image: roomContentImg // Reusing content img or need a new one? Keeping content img for now as placeholder
   },
   {
     id: 'analytics',

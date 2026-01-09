@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const POLLINATIONS_URL = "https://text.pollinations.ai/";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -53,19 +53,45 @@ export const AIAssistant: React.FC<{ levelId: number; taskPrompt: string }> = ({
 
     try {
       const level = GAME_LEVELS.find(l => l.id === levelId);
-
-      // STRATEGY: POLLINATIONS AI (Free, Primary)
-      console.log("Engaging Pollinations AI Assistant...");
-
       const systemContext = `You are ELYSIUM, a high-tech Strategic AI Marketing Assistant. MISSION: ${level?.title} - ${level?.taskPrompt}. Hints: ${level?.taskHints?.join(', ') || 'Analyze the data'}. Rules: Be professional, futuristic, and helpful.`;
       const fullPrompt = `${systemContext}\n\nUser: ${userMessage}`;
+      
+      let assistantMessage = "";
 
-      // Use 'openai' model alias on Pollinations
-      const response = await fetch(`https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
+      // STRATEGY 1: POLLINATIONS (Primary - Free & Reliable)
+      try {
+        console.log("Engaging Pollinations AI Assistant...");
+        const response = await fetch(`${POLLINATIONS_URL}${encodeURIComponent(fullPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1000)}`);
+        if (response.ok) {
+          assistantMessage = await response.text();
+        }
+      } catch (e) {
+        console.warn("Pollinations Assistant failed, checking Gemini fallback...");
+      }
 
-      if (!response.ok) throw new Error("Pollinations API failed");
+      // STRATEGY 2: GEMINI (Secondary Fallback)
+      if (!assistantMessage) {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (apiKey && apiKey.length > 10) {
+          try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: fullPrompt }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
+              })
+            });
 
-      const assistantMessage = await response.text();
+            if (response.ok) {
+              const data = await response.json();
+              assistantMessage = data.candidates[0].content.parts[0].text;
+            }
+          } catch (e) {
+            console.error("Gemini Assistant failed:", e);
+          }
+        }
+      }
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
       addAISuggestion(assistantMessage);

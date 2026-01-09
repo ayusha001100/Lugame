@@ -45,6 +45,18 @@ export const GameContainer: React.FC = () => {
   }, [setFirebaseUser, fetchPlayerProfile]);
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        // Force a regeneration check when the user returns to the tab
+        useGameStore.getState().checkStaminaRegen();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  useEffect(() => {
     if (!player) return;
     const interval = setInterval(() => {
       tick();
